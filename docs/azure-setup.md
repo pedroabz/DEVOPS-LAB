@@ -36,8 +36,7 @@ A checklist to tick off. By the end of this guide you should have:
 - [ ] Azure Functions Core Tools v4 — *deferred to v2; blocked on Xcode Command Line Tools, see §13*
 - [ ] Required resource providers registered
 - [x] A GitHub repository holding this monorepo — [`pedroabz/DEVOPS-LAB`](https://github.com/pedroabz/DEVOPS-LAB)
-- [ ] An Entra ID **app registration** with **federated credentials** — GitHub Actions can deploy to
-      Azure with no stored secret
+- [ ] An Entra ID **app registration** with **federated credentials** — GitHub Actions can deploy to Azure with no stored secret
 - [ ] Repository variables `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`
 - [ ] A green `az account show` running inside a GitHub Actions job
 
@@ -203,10 +202,40 @@ brew install sqlcmd       # query Azure SQL from the terminal
 brew install jq           # parsing az CLI JSON output; used by scripts in this repo
 ```
 
-For editing, add these VS Code extensions: **Bicep**, **Azure Account**, **Azure Resources**,
-**SQL Server (mssql)**, **C# Dev Kit**.
+### 5.6 VS Code extensions
 
-### 5.6 Verify everything
+These are declared in [`.vscode/extensions.json`](../.vscode/extensions.json), so VS Code will
+prompt you to install them when you open the workspace. To install them up front:
+
+```bash
+for ext in \
+  ms-azuretools.vscode-bicep \
+  ms-vscode.azure-account \
+  ms-azuretools.vscode-azureresourcegroups \
+  ms-mssql.mssql \
+  ms-dotnettools.csdevkit
+do
+  code --install-extension "$ext" --force
+done
+```
+
+| Extension | ID | What you'll use it for |
+|---|---|---|
+| Bicep | `ms-azuretools.vscode-bicep` | IntelliSense, linting, and the resource visualiser for `infra/` |
+| Azure Account | `ms-vscode.azure-account` | Sign-in + subscription picker shared by the Azure extensions |
+| Azure Resources | `ms-azuretools.vscode-azureresourcegroups` | Browse deployed resources from the sidebar |
+| SQL Server (mssql) | `ms-mssql.mssql` | Query Azure SQL, inspect schema, run migrations by hand |
+| C# Dev Kit | `ms-dotnettools.csdevkit` | Solution explorer, test runner, debugger |
+
+Keep the Bicep extension version aligned with `az bicep version` — a mismatch produces linter
+warnings the compiler doesn't agree with.
+
+> **Note on Azure Account:** Microsoft has been folding its sign-in flow into the Azure Resources
+> extension, and `ms-vscode.azure-account` is on a deprecation path. It still installs and works
+> today; if it stops being available, Azure Resources handles authentication on its own and you can
+> drop it from the recommendations list.
+
+### 5.7 Verify everything
 
 ```bash
 az version && az bicep version && func --version && gh --version && dotnet --list-sdks

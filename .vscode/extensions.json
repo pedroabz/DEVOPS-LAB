@@ -1,0 +1,20 @@
+{
+  // Recommended for this workspace. VS Code prompts to install these on first open.
+  "recommendations": [
+    // Bicep authoring: syntax, IntelliSense, linting, decompile, visualiser
+    "ms-azuretools.vscode-bicep",
+
+    // Azure sign-in + subscription picker (shared by the Azure extensions)
+    "ms-vscode.azure-account",
+
+    // Browse/manage subscriptions and resources from the sidebar
+    "ms-azuretools.vscode-azureresourcegroups",
+
+    // Query Azure SQL, run scripts, browse schema
+    "ms-mssql.mssql",
+
+    // C# language support, solution explorer, test runner (.NET 10)
+    "ms-dotnettools.csdevkit"
+  ],
+  "unwantedRecommendations": []
+}
