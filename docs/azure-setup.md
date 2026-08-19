@@ -34,11 +34,24 @@ A checklist to tick off. By the end of this guide you should have:
 - [x] A **budget with email alerts** on that subscription — *different from the spending limit, see §4*
 - [x] `az`, `bicep`, `gh`, `jq`, and the .NET 10 SDK installed locally
 - [ ] Azure Functions Core Tools v4 — *deferred to v2; blocked on Xcode Command Line Tools, see §13*
-- [ ] Required resource providers registered
+- [x] Required resource providers registered
 - [x] A GitHub repository holding this monorepo — [`pedroabz/DEVOPS-LAB`](https://github.com/pedroabz/DEVOPS-LAB)
-- [ ] An Entra ID **app registration** with **federated credentials** — GitHub Actions can deploy to Azure with no stored secret
-- [ ] Repository variables `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`
-- [ ] A green `az account show` running inside a GitHub Actions job
+- [x] An Entra ID **app registration** with **federated credentials** — GitHub Actions can deploy to Azure with no stored secret
+- [x] Repository variables `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, `AZURE_LOCATION`
+- [x] A green `az account show` running inside a GitHub Actions job — [run 32280219877](https://github.com/pedroabz/DEVOPS-LAB/actions/runs/32280219877)
+
+**Setup complete.** Recorded values for this lab:
+
+| Name | Value |
+|---|---|
+| Subscription | `25681d80-476e-40a6-9d21-da4138a1cd27` (*Azure subscription 1*) |
+| Tenant | `61bd2f87-a074-421c-9c1e-a2137bc0c1ca` |
+| Deployment identity | `sp-devopslab-github-dev` → client ID `2e50e486-a03e-402f-9e2e-47f530aac6b6` |
+| Repository | `pedroabz/DEVOPS-LAB` |
+| Region | `westeurope` |
+
+None of these are secrets — they are identifiers. The only thing that can authenticate as that
+identity is a GitHub Actions token from this specific repository.
 
 Nothing else. No resource groups, no SQL, no App Service — those come from Bicep in v0.
 
@@ -348,11 +361,10 @@ export GH_REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner)
 echo "$GH_REPO"
 ```
 
-> ⚠️ **This lab's repo is `pedroabz/DEVOPS-LAB` — upper-case.** GitHub is case-*insensitive* when
-> you browse to a URL but case-*preserving* in the OIDC `sub` claim it mints. A federated credential
-> registered against `repo:pedroabz/devops-lab:...` will **not** match a token carrying
-> `repo:pedroabz/DEVOPS-LAB:...`, and you get `AADSTS70021` with no useful detail. Always derive the
-> slug from `gh repo view` as above rather than typing it by hand.
+> ⚠️ **Do not assume the slug is what goes in the OIDC subject.** This lab's repo is
+> `pedroabz/DEVOPS-LAB` (upper-case — GitHub preserves case in tokens), but more importantly GitHub
+> may mint **immutable subject claims** that embed numeric IDs instead of the plain slug. See
+> §8.2 — get this wrong and every workflow fails to authenticate.
 
 `gh` must be authenticated before §8.4 and §9, which create the environment and set repo variables:
 
@@ -394,34 +406,69 @@ echo "Client ID: $AZ_CLIENT_ID"
 
 ### 8.2 Add federated credentials
 
-One credential per trust scenario. The `subject` must match GitHub's token claim character for
-character.
+One credential per trust scenario. The `subject` must match GitHub's token claim **character for
+character** — and the claim is very probably not the plain `owner/repo` slug you expect.
+
+#### The immutable-subject gotcha
+
+Most tutorials tell you the subject is `repo:<owner>/<repo>:ref:refs/heads/main`. GitHub now also
+mints **immutable subject claims**, which splice the numeric owner ID and repository ID into the
+slug so that renaming a user or repo cannot silently hand your Azure trust to whoever claims the old
+name. On this repo the real claim is:
+
+```
+repo:pedroabz@34903747/DEVOPS-LAB@1339815353:ref:refs/heads/main
+        ^^^^^^^^ owner id        ^^^^^^^^^^ repo id
+```
+
+A credential registered against the plain slug will **not** match, and you get `AADSTS700213`.
+
+Build the subject prefix from the API instead of typing it, and register **both** forms so the setup
+survives GitHub toggling the behaviour either way:
 
 ```bash
-# 1) Pushes to the main branch — for deployments
-az ad app federated-credential create --id "$AZ_CLIENT_ID" --parameters "{
-  \"name\": \"github-main\",
-  \"issuer\": \"https://token.actions.githubusercontent.com\",
-  \"subject\": \"repo:${GH_REPO}:ref:refs/heads/main\",
-  \"audiences\": [\"api://AzureADTokenExchange\"]
-}"
+# Plain slug, e.g. pedroabz/DEVOPS-LAB
+export GH_REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner)
 
-# 2) Pull requests — for `bicep what-if` previews on PRs
-az ad app federated-credential create --id "$AZ_CLIENT_ID" --parameters "{
-  \"name\": \"github-pr\",
-  \"issuer\": \"https://token.actions.githubusercontent.com\",
-  \"subject\": \"repo:${GH_REPO}:pull_request\",
-  \"audiences\": [\"api://AzureADTokenExchange\"]
-}"
+# Immutable form, e.g. pedroabz@34903747/DEVOPS-LAB@1339815353
+export GH_REPO_IMMUTABLE=$(gh api "repos/${GH_REPO}" \
+  --jq '"\(.owner.login)@\(.owner.id)/\(.name)@\(.id)"')
 
-# 3) The `dev` GitHub Environment — for gated/approved deploys
-az ad app federated-credential create --id "$AZ_CLIENT_ID" --parameters "{
-  \"name\": \"github-env-dev\",
-  \"issuer\": \"https://token.actions.githubusercontent.com\",
-  \"subject\": \"repo:${GH_REPO}:environment:dev\",
-  \"audiences\": [\"api://AzureADTokenExchange\"]
-}"
+echo "plain:     $GH_REPO"
+echo "immutable: $GH_REPO_IMMUTABLE"
 ```
+
+```bash
+add_fic () {   # $1 = credential name, $2 = subject
+  az ad app federated-credential create --id "$AZ_CLIENT_ID" --parameters "{
+    \"name\": \"$1\",
+    \"issuer\": \"https://token.actions.githubusercontent.com\",
+    \"subject\": \"$2\",
+    \"audiences\": [\"api://AzureADTokenExchange\"]
+  }"
+}
+
+for form in "$GH_REPO" "$GH_REPO_IMMUTABLE"; do
+  suffix=""; [ "$form" = "$GH_REPO_IMMUTABLE" ] && suffix="-immutable"
+  add_fic "github-main${suffix}"    "repo:${form}:ref:refs/heads/main"   # deployments from main
+  add_fic "github-pr${suffix}"      "repo:${form}:pull_request"          # `what-if` previews on PRs
+  add_fic "github-env-dev${suffix}" "repo:${form}:environment:dev"       # gated/approved deploys
+done
+```
+
+Registering both is harmless — a federated credential is a matching rule, not a grant. Only a token
+that actually presents the subject can use it, and both subjects identify the same repository.
+
+#### If it still fails
+
+Don't guess. The failing `azure/login` step **prints the exact subject it presented**:
+
+```
+Federated token details:
+ subject claim - repo:pedroabz@34903747/DEVOPS-LAB@1339815353:ref:refs/heads/main
+```
+
+Copy that string verbatim into a new credential's `subject` and it will match.
 
 Verify:
 
@@ -631,7 +678,8 @@ Rough monthly figures for a lab that is idle most of the time. Treat as order-of
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| `AADSTS70021: No matching federated identity record found` | The `subject` claim doesn't match your federated credential | Compare `az ad app federated-credential list` against the actual claim. Repo owner/name is **case-sensitive**; a branch push needs `ref:refs/heads/main`, a PR needs `pull_request`. |
+| `AADSTS700213: No matching federated identity record found for presented assertion subject` | The `subject` claim doesn't match any federated credential — **usually because GitHub minted an immutable subject** (`owner@ownerId/repo@repoId`) and you registered the plain slug | Read the presented subject straight out of the failed run's `azure/login` log ("Federated token details → subject claim") and register a credential with exactly that string. See §8.2. |
+| `AADSTS70021: No matching federated identity record found` | Same cause, older error code | As above. Also check case — repo owner/name is case-sensitive — and that a branch push uses `ref:refs/heads/main` while a PR uses `pull_request`. |
 | `AADSTS700016: Application not found in the directory` | Wrong `client-id`, wrong `tenant-id`, or `permissions: id-token: write` missing from the workflow | Add the permission block; re-check the variables. |
 | `Unable to get ACTIONS_ID_TOKEN_REQUEST_URL` | `id-token: write` permission missing | Add it at the workflow or job level. |
 | `AuthorizationFailed` when Bicep creates a role assignment | Deployment identity lacks RBAC-writing rights | Re-run §8.3's second `az role assignment create`. |
