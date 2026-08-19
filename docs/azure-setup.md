@@ -35,7 +35,7 @@ A checklist to tick off. By the end of this guide you should have:
 - [x] `az`, `bicep`, `gh`, `jq`, and the .NET 10 SDK installed locally
 - [ ] Azure Functions Core Tools v4 — *deferred to v2; blocked on Xcode Command Line Tools, see §13*
 - [ ] Required resource providers registered
-- [ ] A GitHub repository holding this monorepo
+- [x] A GitHub repository holding this monorepo — [`pedroabz/DEVOPS-LAB`](https://github.com/pedroabz/DEVOPS-LAB)
 - [ ] An Entra ID **app registration** with **federated credentials** — GitHub Actions can deploy to
       Azure with no stored secret
 - [ ] Repository variables `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`
@@ -312,11 +312,23 @@ git commit -m "chore: scaffold monorepo structure and docs"
 gh repo create devops-lab --private --source=. --remote=origin --push
 ```
 
-Capture the repo slug — the OIDC subject claims must match it **exactly**, including case:
+Capture the repo slug — the OIDC subject claims must match it **exactly, including case**:
 
 ```bash
 export GH_REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner)
-echo "$GH_REPO"     # e.g. pedroazeredo/devops-lab
+echo "$GH_REPO"
+```
+
+> ⚠️ **This lab's repo is `pedroabz/DEVOPS-LAB` — upper-case.** GitHub is case-*insensitive* when
+> you browse to a URL but case-*preserving* in the OIDC `sub` claim it mints. A federated credential
+> registered against `repo:pedroabz/devops-lab:...` will **not** match a token carrying
+> `repo:pedroabz/DEVOPS-LAB:...`, and you get `AADSTS70021` with no useful detail. Always derive the
+> slug from `gh repo view` as above rather than typing it by hand.
+
+`gh` must be authenticated before §8.4 and §9, which create the environment and set repo variables:
+
+```bash
+gh auth status || gh auth login    # GitHub.com → HTTPS → login with a browser
 ```
 
 > Private repos are fine. GitHub Actions minutes are free for public repos and generous
