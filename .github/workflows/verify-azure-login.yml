@@ -1,0 +1,31 @@
+name: verify-azure-login
+
+# Temporary. Proves the GitHub -> Azure OIDC federation works end to end.
+# Delete once it goes green; the real pipelines arrive in v0.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write # REQUIRED: mints the OIDC token. Without it: AADSTS700016.
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Azure login (OIDC, no stored secret)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Show the identity we authenticated as
+        run: |
+          echo "--- account ---"
+          az account show --output table
+          echo "--- resource groups (expected: none yet) ---"
+          az group list --output table
+          echo "--- can we see the location variable? ---"
+          echo "AZURE_LOCATION=${{ vars.AZURE_LOCATION }}"
