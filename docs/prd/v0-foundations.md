@@ -2,6 +2,9 @@
 
 **Status:** in progress · **Owner:** @pedroabz · **Depends on:** [`docs/azure-setup.md`](../azure-setup.md) (complete)
 
+> **Working checklist:** [`v0-tasks.md`](v0-tasks.md) — this document is the *what and why*;
+> the task list is the tickable *what next*.
+
 ---
 
 ## 1. Summary

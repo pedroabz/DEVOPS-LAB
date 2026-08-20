@@ -66,7 +66,7 @@ App Insights transaction view.
 
 Built in slices. Each version is deployable and demoable on its own.
 
-### v0 — Foundations _(current)_ — [PRD](docs/prd/v0-foundations.md)
+### v0 — Foundations _(current)_ — [PRD](docs/prd/v0-foundations.md) · [task list](docs/prd/v0-tasks.md)
 - [x] Monorepo layout, docs, conventions
 - [ ] Azure account + subscription + budget alerts ([`docs/azure-setup.md`](docs/azure-setup.md))
 - [ ] GitHub OIDC federated identity, no stored secrets
