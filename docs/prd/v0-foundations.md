@@ -143,7 +143,7 @@ hint, a review, or the solution.
 
 | Milestone | Tasks | Status |
 |---|---|---|
-| [M1 · Skeleton and hygiene](#m1--bicep-skeleton-and-repo-hygiene) | 6 | ☐ |
+| [M1 · Skeleton and hygiene](#m1--bicep-skeleton-and-repo-hygiene) | 6 | ◐ 3/6 |
 | [M2 · Subscription scope + RG](#m2--subscription-scope-and-the-resource-group) | 7 | ☐ |
 | [M3 · Observability](#m3--observability) | 5 | ☐ |
 | [M4 · Data](#m4--data) | 8 | ☐ |
@@ -159,14 +159,18 @@ hint, a review, or the solution.
 
 **Learn:** the Bicep linter, `bicepconfig.json`, why `targetScope` matters.
 
-- [ ] **1.1** Add a `.gitignore` covering .NET build output (`bin/`, `obj/`), compiled ARM
-      (`*.json` emitted by `bicep build`), `.DS_Store`, and local settings files.
-      <br>*Look up:* GitHub's `VisualStudio.gitignore` template.
-- [ ] **1.2** Add an `.editorconfig` setting 2-space indent for `.bicep` and 4-space for `.cs`.
-      <br>*Look up:* EditorConfig properties supported by the Bicep VS Code extension.
-- [ ] **1.3** Create `infra/bicepconfig.json` and enable the linter. Decide which rules are errors
-      vs warnings.
-      <br>*Look up:* Bicep linter rules; `no-unused-params`, `secure-secrets-in-params`, `prefer-interpolation`.
+- [x] **1.1** `.gitignore` — .NET output, compiled ARM, local settings, OS cruft. *(done for you —
+      boilerplate, not the object of study)*
+      <br>Note the negation pattern: `infra/**/*.json` ignores `bicep build` output, and
+      `!infra/**/bicepconfig.json` keeps the config tracked.
+- [x] **1.2** `.editorconfig` — 2-space for `.bicep`/`.bicepparam`/YAML/JSON, 4-space for `.cs`,
+      plus a few C# conventions. *(done for you)*
+- [x] **1.3** `infra/bicepconfig.json` — linter enabled. *(done for you)* Rules are split three ways:
+      security and dead-code rules are **errors**, style rules are **warnings**, and
+      `use-recent-api-versions` is **off** because it flags every API version as stale within months.
+      <br>*Worth knowing:* verified by building a throwaway file with an unused param and confirming
+      it failed as `Error` rather than the default `Warning`. A misspelled rule name is silently
+      ignored, so a config that "looks right" can do nothing.
 - [ ] **1.4** Create an empty `infra/main.bicep` with only `targetScope` set. Confirm it builds.
       <br>*Look up:* `targetScope` values and what each one can create.
 - [ ] **1.5** Repoint or replace `infra/subscription.dev.bicepparam` — its `using` line still

@@ -1,0 +1,40 @@
+{
+  // Linter configuration for all .bicep files under infra/.
+  // Rule reference: https://learn.microsoft.com/azure/azure-resource-manager/bicep/linter
+  "analyzers": {
+    "core": {
+      "enabled": true,
+      "verbose": true,
+      "rules": {
+        // --- Correctness / security: fail the build ---
+        "adminusername-should-not-be-literal": { "level": "error" },
+        "no-hardcoded-env-urls": { "level": "error" },
+        "no-hardcoded-location": { "level": "error" },
+        "outputs-should-not-contain-secrets": { "level": "error" },
+        "secure-parameter-default": { "level": "error" },
+        "secure-params-in-nested-deploy": { "level": "error" },
+        "protect-commandtoexecute-secrets": { "level": "error" },
+
+        // --- Dead code: fail the build, it is always a mistake ---
+        "no-unused-params": { "level": "error" },
+        "no-unused-vars": { "level": "error" },
+
+        // --- Style and maintainability: warn ---
+        "explicit-values-for-loc-params": { "level": "warning" },
+        "no-conflicting-metadata": { "level": "warning" },
+        "no-loc-expr-outside-params": { "level": "warning" },
+        "no-unnecessary-dependson": { "level": "warning" },
+        "prefer-interpolation": { "level": "warning" },
+        "prefer-unquoted-property-names": { "level": "warning" },
+        "simplify-interpolation": { "level": "warning" },
+        "use-parent-property": { "level": "warning" },
+        "use-resource-id-functions": { "level": "warning" },
+        "use-stable-resource-identifiers": { "level": "warning" },
+
+        // --- Off: flags every API version as stale within months. Revisit
+        //     deliberately rather than living with permanent noise. ---
+        "use-recent-api-versions": { "level": "off" }
+      }
+    }
+  }
+}

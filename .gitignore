@@ -1,0 +1,64 @@
+# ---------- Bicep ----------
+# Compiled ARM templates emitted by `bicep build`. The .bicep file is the source
+# of truth; the JSON is a build artifact. Negations keep real config tracked.
+infra/**/*.json
+!infra/**/bicepconfig.json
+!infra/**/*.parameters.json
+
+# ---------- .NET ----------
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+project.lock.json
+project.fragment.lock.json
+artifacts/
+TestResults/
+[Cc]overage*/
+*.coverage
+*.coveragexml
+*.trx
+
+# Local app configuration — may contain connection strings
+appsettings.Development.json
+appsettings.Local.json
+local.settings.json
+*.local.json
+
+# ---------- Azure Functions ----------
+.python_packages/
+__azurite_db*__.json
+__blobstorage__/
+__queuestorage__/
+
+# ---------- Tooling / IDE ----------
+.vs/
+.idea/
+*.swp
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/launch.json
+!.vscode/tasks.json
+
+# ---------- OS ----------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+
+# ---------- Secrets ----------
+# Nothing in this repo should need these, but fail safe.
+*.pfx
+*.publishsettings
+.env
+.env.*
+!.env.example
