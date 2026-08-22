@@ -111,14 +111,15 @@ Adopt [Microsoft CAF abbreviations](https://learn.microsoft.com/azure/cloud-adop
 | Resource group | `rg-devopslab-dev-neu` | |
 | Log Analytics | `log-devopslab-dev-neu` | |
 | App Insights | `appi-devopslab-dev-neu` | |
-| SQL server | `sql-devopslab-dev-<unique>` | **globally unique** |
+| SQL server | `sql-devopslab-dev-neu-pabz` | **globally unique** — hence the `owner` token |
 | SQL database | `sqldb-orders-dev` | |
 | App Service plan | `asp-devopslab-dev-neu` | |
-| Web App | `app-devopslab-api-dev-<unique>` | **globally unique** |
+| Web App | `app-devopslab-dev-neu-pabz` | **globally unique** — hence the `owner` token |
 | Key Vault | `kv-dvlab-dev-<unique>` | **globally unique, ≤24 chars** |
 
-Three of these are globally unique across all of Azure — use `uniqueString()` on a deterministic
-seed so the name is stable across redeployments but doesn't collide with strangers.
+Two of these are globally unique across all of Azure. A short `owner` token disambiguates them.
+`uniqueString()` is the alternative, but it produces unreadable names you cannot predict before
+deploying — not worth it for a single-owner lab.
 
 Tag every resource, applied once at the resource group and inherited by convention:
 

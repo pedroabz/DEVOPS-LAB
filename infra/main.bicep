@@ -34,24 +34,22 @@ param sqlEntraAdminName string
 @description('Object ID of the Entra group that administers SQL.')
 param sqlEntraAdminObjectId string
 
-// Derived names — see docs/prd/v0-foundations.md §7.
-// 'neu' = northeurope. Single-region lab; change this alongside `location`.
+// Names follow docs/prd/v0-foundations.md §7. 'neu' = northeurope.
+// Single-region lab; change this alongside `location`.
 var suffix = '${workload}-${envName}-neu'
 
-// SQL server and Web App names must be globally unique across all of Azure.
-// Seeded on the subscription so the value is STABLE across redeployments but
-// will not collide with anyone else. resourceGroup() is unavailable at this
-// scope, so subscription().subscriptionId is the seed.
-var uniqueSuffix = substring(uniqueString(subscription().subscriptionId, workload, envName), 0, 6)
+// SQL server and Web App names are globally unique across ALL of Azure, so they
+// carry an extra token. If one is ever taken, change this.
+var owner = 'pabz'
 
 var names = {
   resourceGroup: 'rg-${suffix}'
   logAnalytics: 'log-${suffix}'
   applicationInsights: 'appi-${suffix}'
   appServicePlan: 'asp-${suffix}'
-  sqlServer: toLower('sql-${workload}-${envName}-${uniqueSuffix}')
+  sqlServer: toLower('sql-${suffix}-${owner}') // SQL rejects uppercase
   sqlDatabase: 'sqldb-orders-${envName}'
-  webApp: toLower('app-${workload}-api-${envName}-${uniqueSuffix}')
+  webApp: 'app-${suffix}-${owner}'
 }
 
 var tags = {
