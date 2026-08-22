@@ -34,25 +34,9 @@ param sqlEntraAdminName string
 @description('Object ID of the Entra group that administers SQL.')
 param sqlEntraAdminObjectId string
 
-// ---------------------------------------------------------------------------
-// Derived names — see docs/prd/v0-foundations.md §7
-// ---------------------------------------------------------------------------
-
-// CAF-style region abbreviations. Falls back to the first three letters for any
-// region not listed, so an unknown region still produces a legal name.
-var regionAbbreviations = {
-  northeurope: 'neu'
-  westeurope: 'weu'
-  swedencentral: 'sdc'
-  francecentral: 'frc'
-  uksouth: 'uks'
-  eastus: 'eus'
-  brazilsouth: 'brs'
-}
-var regionAbbr = regionAbbreviations[?location] ?? substring(location, 0, 3)
-
-// Common suffix for regionally-scoped names.
-var suffix = '${workload}-${envName}-${regionAbbr}'
+// Derived names — see docs/prd/v0-foundations.md §7.
+// 'neu' = northeurope. Single-region lab; change this alongside `location`.
+var suffix = '${workload}-${envName}-neu'
 
 // SQL server and Web App names must be globally unique across all of Azure.
 // Seeded on the subscription so the value is STABLE across redeployments but
