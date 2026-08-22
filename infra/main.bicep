@@ -47,14 +47,6 @@ var names = {
   webApp: 'app-${suffix}-${owner}'
 }
 
-var tags = {
-  env: envName
-  workload: 'devopslab'
-  managedBy: 'bicep'
-  costCenter: 'lab'
-  repo: 'pedroabz/DEVOPS-LAB'
-}
-
 // ---------------------------------------------------------------------------
 // Resources
 // ---------------------------------------------------------------------------
@@ -62,7 +54,6 @@ var tags = {
 resource rg 'Microsoft.Resources/resourceGroups@2025-04-01' = {
   name: names.resourceGroup
   location: location
-  tags: tags
 }
 
 module OrderObservability './modules/observability.bicep' = {
@@ -87,8 +78,8 @@ module sql './modules/sqlServer.bicep' = {
   }
 }
 
-module compute './modules/compute.bicep' = {
-  name: 'computeDeployment'
+module appService './modules/appService.bicep' = {
+  name: 'appServiceDeployment'
   scope: rg
   params: {
     location: location
@@ -108,10 +99,10 @@ module compute './modules/compute.bicep' = {
 output resourceGroupName string = rg.name
 
 @description('Default hostname of the deployed Web App.')
-output webAppHostname string = compute.outputs.webAppHostname
+output webAppHostname string = appService.outputs.webAppHostname
 
 @description('Managed identity principal ID of the Web App — needed for the M6 role assignments.')
-output webAppPrincipalId string = compute.outputs.webAppPrincipalId
+output webAppPrincipalId string = appService.outputs.webAppPrincipalId
 
 @description('FQDN of the SQL server.')
 output sqlServerFqdn string = sql.outputs.sqlServerFqdn
