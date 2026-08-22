@@ -1,22 +1,33 @@
 targetScope = 'subscription'
 
-@description('Name of the resource group to create.')
-param resourceGroupName string
+// ---------------------------------------------------------------------------
+// Parameters — deliberately few. Resource NAMES are not parameters; they are
+// derived below from these inputs so the convention in docs/prd §7 is enforced
+// by construction rather than by remembering it in every .bicepparam file.
+// ---------------------------------------------------------------------------
 
-@description('Azure region for every resource. Note this is independent of the --location passed to `az deployment sub create`, which only says where the deployment RECORD is stored.')
+@description('Environment discriminator. Appears in every resource name and tag.')
+@allowed([
+  'dev'
+  'prod'
+])
+param envName string
+
+@description('Workload name. Appears in every resource name and tag.')
+@minLength(3)
+@maxLength(12)
+param workload string = 'devopslab'
+
+@description('Azure region for every resource. Independent of the --location passed to `az deployment sub create`, which only says where the deployment RECORD is stored.')
 param location string = 'northeurope'
 
-@description('Name of the Log Analytics workspace.')
-param logAnalyticsName string
-
-@description('Name of the Application Insights component.')
-param ordersAppInsightsName string
-
-@description('Globally unique name of the SQL logical server.')
-param sqlServerName string
-
-@description('Name of the SQL database.')
-param databaseName string
+@description('App Service plan SKU. B1 is the cheapest tier with deployment slots; F1 is free but has no slots and no Always On.')
+@allowed([
+  'F1'
+  'B1'
+  'S1'
+])
+param appServicePlanSku string = 'B1'
 
 @description('Display name of the Entra group that administers SQL.')
 param sqlEntraAdminName string
@@ -24,18 +35,58 @@ param sqlEntraAdminName string
 @description('Object ID of the Entra group that administers SQL.')
 param sqlEntraAdminObjectId string
 
-@description('Name of the App Service plan.')
-param appServicePlanName string
+// ---------------------------------------------------------------------------
+// Derived names — see docs/prd/v0-foundations.md §7
+// ---------------------------------------------------------------------------
 
-@description('Globally unique name of the Web App.')
-param webAppName string
+// CAF-style region abbreviations. Falls back to the first three letters for any
+// region not listed, so an unknown region still produces a legal name.
+var regionAbbreviations = {
+  northeurope: 'neu'
+  westeurope: 'weu'
+  swedencentral: 'sdc'
+  francecentral: 'frc'
+  uksouth: 'uks'
+  eastus: 'eus'
+  brazilsouth: 'brs'
+}
+var regionAbbr = regionAbbreviations[?location] ?? substring(location, 0, 3)
 
-@description('App Service plan SKU.')
-param appServicePlanSku string = 'B1'
+// Common suffix for regionally-scoped names.
+var suffix = '${workload}-${envName}-${regionAbbr}'
+
+// SQL server and Web App names must be globally unique across all of Azure.
+// Seeded on the subscription so the value is STABLE across redeployments but
+// will not collide with anyone else. resourceGroup() is unavailable at this
+// scope, so subscription().subscriptionId is the seed.
+var uniqueSuffix = substring(uniqueString(subscription().subscriptionId, workload, envName), 0, 6)
+
+var names = {
+  resourceGroup: 'rg-${suffix}'
+  logAnalytics: 'log-${suffix}'
+  applicationInsights: 'appi-${suffix}'
+  appServicePlan: 'asp-${suffix}'
+  sqlServer: toLower('sql-${workload}-${envName}-${uniqueSuffix}')
+  sqlDatabase: 'sqldb-orders-${envName}'
+  webApp: toLower('app-${workload}-api-${envName}-${uniqueSuffix}')
+}
+
+var tags = {
+  env: envName
+  workload: workload
+  managedBy: 'bicep'
+  costCenter: 'lab'
+  repo: 'pedroabz/DEVOPS-LAB'
+}
+
+// ---------------------------------------------------------------------------
+// Resources
+// ---------------------------------------------------------------------------
 
 resource rg 'Microsoft.Resources/resourceGroups@2025-04-01' = {
-  name: resourceGroupName
+  name: names.resourceGroup
   location: location
+  tags: tags
 }
 
 module OrderObservability './modules/observability.bicep' = {
@@ -43,8 +94,8 @@ module OrderObservability './modules/observability.bicep' = {
   scope: rg
   params: {
     location: location
-    name: logAnalyticsName
-    applicationInsightsName: ordersAppInsightsName
+    name: names.logAnalytics
+    applicationInsightsName: names.applicationInsights
   }
 }
 
@@ -53,8 +104,8 @@ module sql './modules/sqlServer.bicep' = {
   scope: rg
   params: {
     location: location
-    sqlServerName: sqlServerName
-    databaseName: databaseName
+    sqlServerName: names.sqlServer
+    databaseName: names.sqlDatabase
     sqlEntraAdminName: sqlEntraAdminName
     sqlEntraAdminObjectId: sqlEntraAdminObjectId
   }
@@ -65,13 +116,20 @@ module compute './modules/compute.bicep' = {
   scope: rg
   params: {
     location: location
-    appServicePlanName: appServicePlanName
-    webAppName: webAppName
+    appServicePlanName: names.appServicePlan
+    webAppName: names.webApp
     appServicePlanSku: appServicePlanSku
     applicationInsightsConnectionString: OrderObservability.outputs.applicationInsightsConnectionString
     sqlConnectionString: sql.outputs.connectionString
   }
 }
+
+// ---------------------------------------------------------------------------
+// Outputs
+// ---------------------------------------------------------------------------
+
+@description('Name of the resource group that was created.')
+output resourceGroupName string = rg.name
 
 @description('Default hostname of the deployed Web App.')
 output webAppHostname string = compute.outputs.webAppHostname
