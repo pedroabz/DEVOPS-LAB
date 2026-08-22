@@ -163,7 +163,7 @@ devops-lab/
 | IaC | Bicep | Native to Azure, no state file to manage, first-class `what-if` |
 | Language | C# / .NET 10 | LTS, strongest Azure story: managed identity, App Insights, SB bindings |
 | CI/CD | GitHub Actions + OIDC | No secrets at rest; workflows live beside the code |
-| API hosting | App Service (Linux) | Deployment slots, easy managed identity, cheap on B1 |
+| API hosting | App Service (Linux) | Easy managed identity; free on F1. Slots need S1 — scale up only to practise |
 | Function hosting | **Flex Consumption** | .NET 10 is *not* supported on Linux Consumption — Flex is required |
 | SQL | Azure SQL serverless, auto-pause | Scales to zero when idle; keeps the lab cheap |
 | Auth to data | Managed identity everywhere | The habit worth building; no passwords to rotate |

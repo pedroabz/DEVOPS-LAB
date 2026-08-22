@@ -1,11 +1,5 @@
 targetScope = 'subscription'
 
-// ---------------------------------------------------------------------------
-// Parameters — deliberately few. Resource NAMES are not parameters; they are
-// derived below from these inputs so the convention in docs/prd §7 is enforced
-// by construction rather than by remembering it in every .bicepparam file.
-// ---------------------------------------------------------------------------
-
 @description('Environment discriminator. Appears in every resource name and tag.')
 @allowed([
   'dev'
@@ -21,13 +15,18 @@ param workload string = 'devopslab'
 @description('Azure region for every resource. Independent of the --location passed to `az deployment sub create`, which only says where the deployment RECORD is stored.')
 param location string = 'northeurope'
 
-@description('App Service plan SKU. B1 is the cheapest tier with deployment slots; F1 is free but has no slots and no Always On.')
+@description('''App Service plan SKU. Defaults to F1 (free) to keep the lab at zero compute cost.
+  F1 — free. No Always On (app unloads after ~20 min idle), 60 CPU-minutes/day, no deployment slots.
+  B1 — ~EUR 12/mo. Always On, but STILL NO SLOTS. Slots start at Standard.
+  S1 — ~EUR 65/mo. 5 deployment slots. Same hardware as B1; you pay purely for features.
+  Plans bill hourly and resize in place, so switch to S1 for an afternoon to practise slot swaps
+  (v1), then switch back. See docs/prd/v0-foundations.md section 9.''')
 @allowed([
   'F1'
   'B1'
   'S1'
 ])
-param appServicePlanSku string = 'B1'
+param appServicePlanSku string = 'F1'
 
 @description('Display name of the Entra group that administers SQL.')
 param sqlEntraAdminName string

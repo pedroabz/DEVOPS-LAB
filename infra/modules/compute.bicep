@@ -9,13 +9,17 @@ param webAppName string
 @description('Azure region.')
 param location string
 
-@description('App Service plan SKU. B1 is the cheapest tier with deployment slots, which v1 needs for slot swaps. F1 is free but has no slots and no Always On.')
+@description('''App Service plan SKU.
+  F1 — free; no Always On, 60 CPU-min/day, no slots. The lab default.
+  B1 — ~EUR 12/mo; Always On, but no deployment slots.
+  S1 — ~EUR 65/mo; 5 slots. Deployment slots require Standard or higher — Free, Shared and Basic
+       have none. Scale up temporarily to practise slot swaps, then scale back.''')
 @allowed([
   'F1'
   'B1'
   'S1'
 ])
-param appServicePlanSku string = 'B1'
+param appServicePlanSku string = 'F1'
 
 @description('Application Insights connection string, from the observability module.')
 param applicationInsightsConnectionString string

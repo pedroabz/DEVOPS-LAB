@@ -62,7 +62,7 @@ v0 is finished when **all** of these are true:
   │                                                                      │
   │   ┌────────────────┐        ┌──────────────────┐                     │
   │   │ App Service    │        │  Key Vault       │                     │
-  │   │ plan (B1/F1)   │        │  (RBAC mode)     │                     │
+  │   │ plan (F1 free) │        │  (RBAC mode)     │                     │
   │   └───────┬────────┘        └────────▲─────────┘                     │
   │           │                          │ get secrets                   │
   │   ┌───────▼────────┐                 │                               │
@@ -93,7 +93,7 @@ v0 is finished when **all** of these are true:
 | 3 | Application Insights | **Workspace-based**, linked to #2 | Classic AI is retired; workspace-based is required for modern features |
 | 4 | Azure SQL logical server | **Entra-only authentication**, admin = the Entra group from setup §11.1 | No password to leak or rotate; the whole point of the exercise |
 | 5 | Azure SQL database | **General Purpose serverless**, 0.5–1 vCore, **auto-pause 60 min** | Scales to zero; an idle DB costs storage only |
-| 6 | App Service plan | Linux, **B1** (or F1 to start) | B1 is the cheapest tier with deployment slots — needed in v1 |
+| 6 | App Service plan | Linux, **F1** (free) | Zero compute cost. Slots need **S1** — B1 has none either. Scale up temporarily when v1 practises swaps |
 | 7 | Web App | Linux, .NET 10 runtime, **system-assigned MI**, HTTPS-only | The MI is what authenticates to SQL and Key Vault |
 | 8 | Key Vault | Standard, **RBAC authorization**, soft-delete on | RBAC mode over access policies — access policies are legacy |
 | 9 | Role assignments | Web App MI → Key Vault Secrets User; MI → SQL | Your deployment identity already holds RBAC Administrator |
@@ -281,8 +281,8 @@ you've observed a pause/resume cycle.
 **Learn:** managed identity vs service principal, App Service configuration, why the connection
 string is an app setting rather than baked into code.
 
-- [ ] **5.1** Add a Linux App Service plan. Choose F1 or B1 and record why in the PR description.
-      <br>*Look up:* `reserved: true` for Linux; what F1 gives up versus B1.
+- [ ] **5.1** Add a Linux App Service plan. Default F1; record the reasoning in the PR description.
+      <br>*Look up:* `reserved: true` for Linux; the F1 CPU-minute quota; **which tier deployment slots actually start at** (it is not Basic).
 - [ ] **5.2** Add the Web App with the .NET 10 runtime stack.
       <br>*Look up:* `linuxFxVersion` and the current value for .NET 10.
 - [ ] **5.3** Enable a **system-assigned managed identity**.
@@ -385,7 +385,7 @@ using nothing but the pipeline.
 
 | Decision | Options | Note |
 |---|---|---|
-| App Service tier | F1 free vs B1 (~€12/mo) | F1 has no slots and no Always On. v1 wants slots — but you can start F1 and change one line. |
+| App Service tier | F1 free (default) vs B1 ~€12 vs S1 ~€65 | **Slots require S1** — Free, Shared *and Basic* have none. B1 buys Always On but no slots, so it is rarely the right stop. Run F1, and flip `appServicePlanSku` to `'S1'` for an afternoon when v1 practises slot swaps (~€0.10), then flip back. Plans resize in place. |
 | SQL MI grant mechanism | deployment script / pipeline step / manual | See task 6.5. No wrong answer, but pick consciously. |
 | `what-if` on PRs | comment-only vs blocking check | Comment-only is friendlier while you're iterating alone. |
 | Module granularity | one per resource vs grouped | Grouped (`observability.bicep`, `data.bicep`) tends to age better than one-file-per-resource. |

@@ -656,7 +656,7 @@ Rough monthly figures for a lab that is idle most of the time. Treat as order-of
 | Log Analytics workspace | Pay-as-you-go | €0–3 | First 5 GB/month ingestion is free. Set a daily cap. |
 | Application Insights | Workspace-based | included above | Billed through Log Analytics. |
 | Azure SQL | **Serverless**, Gen5, 0.5–1 vCore, auto-pause 60 min | €2–15 | Auto-pause is what keeps this cheap — an idle DB bills only ~€0.10/GB storage. |
-| App Service plan | **B1 Linux** | ~€12 | F1 (free) works but has no deployment slots and no Always On. Start on F1, move to B1 when you want slot swaps. |
+| App Service plan | **F1 Linux (free)** | €0 | F1 has no Always On and a 60 CPU-min/day cap. **Deployment slots require Standard (S1, ~€65/mo) — Basic B1 has none either.** Scale to S1 for an afternoon to practise swaps (~€0.10), then back. |
 | Function App | **Flex Consumption** | €0–2 | Pay per execution. Keep always-ready instances at 0. Required for .NET 10. |
 | Service Bus | **Basic** | <€1 | €0.05 per million operations. Basic is queues-only; upgrade to Standard (~€9) only if you need topics or sessions. |
 | Storage account (Functions) | Standard LRS | <€1 | |

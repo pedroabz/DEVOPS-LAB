@@ -7,7 +7,10 @@ param envName = 'dev'
 param workload = 'devopslab'
 param location = 'northeurope'
 
-param appServicePlanSku = 'B1'
+// F1 (free) by default. Deployment slots need Standard or higher — flip this to 'S1',
+// redeploy, practise the slot swap, then flip it back. Plans bill hourly, so an
+// afternoon on S1 costs roughly EUR 0.10.
+param appServicePlanSku = 'F1'
 
 param sqlEntraAdminName = 'sg-devopslab-sql-admins'
 param sqlEntraAdminObjectId = 'cffa7571-2a23-417e-b71f-8cff180f7af8'
