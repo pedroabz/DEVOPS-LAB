@@ -81,6 +81,37 @@ Built in slices. Each version is deployable and demoable on its own.
 - [ ] `api-ci` workflow: build → test → publish → deploy to staging slot → swap
 - [ ] Smoke tests against the deployed environment
 
+### v1.5 — Dashboards & alerting
+
+Exceptions have to exist before you can chart or alert on them, so this follows v1. Everything here
+is Bicep like the rest — no dashboards clicked together in the portal.
+
+**The dashboard** — an [Azure Workbook](https://learn.microsoft.com/azure/azure-monitor/visualize/workbooks-overview)
+(`Microsoft.Insights/workbooks`), deployed as code, showing:
+- [ ] Exception rate over time, and top exception types by count
+- [ ] Failed requests by endpoint and status code
+- [ ] Dependency failures — SQL timeouts, HTTP call failures
+- [ ] Slowest endpoints (P50/P95/P99)
+- [ ] Log volume, and how close ingestion is to the daily cap
+- [ ] A KQL query library kept in the repo, so the queries are reviewable and reusable
+
+> Workbooks, not Azure Dashboards. Workbooks support parameters, KQL, and sensible source control;
+> Azure Dashboards are a portal-layout artifact that round-trips badly through IaC.
+
+**The email alerts** — Azure Monitor, in two parts:
+- [ ] An **Action Group** (`Microsoft.Insights/actionGroups`) holding the email receiver. This is the
+      "who gets told" half, reusable across every rule.
+- [ ] **Log search alert rules** (`Microsoft.Insights/scheduledQueryRules`) — KQL against App Insights
+      for *specific* exception signatures, so you alert on what matters instead of on everything.
+- [ ] **Metric alerts** for the coarse signals: failed-request rate, server response time, availability.
+- [ ] Route App Insights **Smart Detection** (anomaly detection) to the same Action Group.
+- [ ] An alert for the Log Analytics **daily cap being hit** — otherwise telemetry silently stops and
+      every other alert goes quiet with it.
+- [ ] Tune severities and add suppression/action rules so a single incident doesn't send 200 emails.
+
+> Email is the v1.5 target because it needs no extra service. The Action Group abstraction means
+> adding Slack, Teams, SMS, or a webhook later is a change to one resource, not to every rule.
+
 ### v2 — Event-driven
 - [ ] Service Bus namespace + `order-events` queue + dead-letter handling
 - [ ] `OrderIngestor` Function (Flex Consumption) → calls the API
@@ -96,7 +127,8 @@ Built in slices. Each version is deployable and demoable on its own.
 ### v4 — Production hardening _(stretch)_
 - [ ] `prod` environment + promotion pipeline with manual approval
 - [ ] Private endpoints, VNet integration
-- [ ] Alert rules, availability tests, workbook dashboard
+- [ ] Availability tests (synthetic monitoring) feeding the v1.5 alerts
+- [ ] On-call escalation: severity-based routing, action rules, maintenance windows
 - [ ] Load test in the pipeline, cost reporting
 
 ---
