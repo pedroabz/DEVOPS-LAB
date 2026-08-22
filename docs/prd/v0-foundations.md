@@ -58,7 +58,7 @@ v0 is finished when **all** of these are true:
 ## 5. Architecture — the v0 slice
 
 ```
-  ┌──────────────────────── rg-devopslab-dev-weu ────────────────────────┐
+  ┌──────────────────────── rg-devopslab-dev-neu ────────────────────────┐
   │                                                                      │
   │   ┌────────────────┐        ┌──────────────────┐                     │
   │   │ App Service    │        │  Key Vault       │                     │
@@ -88,7 +88,7 @@ v0 is finished when **all** of these are true:
 
 | # | Resource | SKU / config | Why this choice |
 |---|---|---|---|
-| 1 | Resource group | `westeurope` | Lifecycle boundary; one per environment |
+| 1 | Resource group | `northeurope` | Lifecycle boundary; one per environment |
 | 2 | Log Analytics workspace | PerGB2018, 30-day retention, **daily cap 1 GB** | The cap is the cost guardrail; ingestion is the only thing here that can run away |
 | 3 | Application Insights | **Workspace-based**, linked to #2 | Classic AI is retired; workspace-based is required for modern features |
 | 4 | Azure SQL logical server | **Entra-only authentication**, admin = the Entra group from setup §11.1 | No password to leak or rotate; the whole point of the exercise |
@@ -108,12 +108,12 @@ Adopt [Microsoft CAF abbreviations](https://learn.microsoft.com/azure/cloud-adop
 
 | Resource | Pattern | Note |
 |---|---|---|
-| Resource group | `rg-devopslab-dev-weu` | |
-| Log Analytics | `log-devopslab-dev-weu` | |
-| App Insights | `appi-devopslab-dev-weu` | |
+| Resource group | `rg-devopslab-dev-neu` | |
+| Log Analytics | `log-devopslab-dev-neu` | |
+| App Insights | `appi-devopslab-dev-neu` | |
 | SQL server | `sql-devopslab-dev-<unique>` | **globally unique** |
 | SQL database | `sqldb-orders-dev` | |
-| App Service plan | `asp-devopslab-dev-weu` | |
+| App Service plan | `asp-devopslab-dev-neu` | |
 | Web App | `app-devopslab-api-dev-<unique>` | **globally unique** |
 | Key Vault | `kv-dvlab-dev-<unique>` | **globally unique, ≤24 chars** |
 
@@ -217,7 +217,7 @@ hint, a review, or the solution.
 > usual choice. Modules creating RG-scoped resources also need an explicit `scope:`. Work it out
 > from the error messages; they're clear once you know scope is the issue.
 
-**Done when:** `az group show -n rg-devopslab-dev-weu` returns your tagged resource group, and a
+**Done when:** `az group show -n rg-devopslab-dev-neu` returns your tagged resource group, and a
 second deployment reports no changes.
 
 ---
