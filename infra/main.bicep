@@ -7,11 +7,6 @@ targetScope = 'subscription'
 ])
 param envName string
 
-@description('Workload name. Appears in every resource name and tag.')
-@minLength(3)
-@maxLength(12)
-param workload string = 'devopslab'
-
 @description('Azure region for every resource. Independent of the --location passed to `az deployment sub create`, which only says where the deployment RECORD is stored.')
 param location string = 'northeurope'
 
@@ -36,7 +31,7 @@ param sqlEntraAdminObjectId string
 
 // Names follow docs/prd/v0-foundations.md §7. 'neu' = northeurope.
 // Single-region lab; change this alongside `location`.
-var suffix = '${workload}-${envName}-neu'
+var suffix = 'devopslab-${envName}-neu'
 
 // SQL server and Web App names are globally unique across ALL of Azure, so they
 // carry an extra token. If one is ever taken, change this.
@@ -47,14 +42,14 @@ var names = {
   logAnalytics: 'log-${suffix}'
   applicationInsights: 'appi-${suffix}'
   appServicePlan: 'asp-${suffix}'
-  sqlServer: toLower('sql-${suffix}-${owner}') // SQL rejects uppercase
+  sqlServer: 'sql-${suffix}-${owner}'
   sqlDatabase: 'sqldb-orders-${envName}'
   webApp: 'app-${suffix}-${owner}'
 }
 
 var tags = {
   env: envName
-  workload: workload
+  workload: 'devopslab'
   managedBy: 'bicep'
   costCenter: 'lab'
   repo: 'pedroabz/DEVOPS-LAB'

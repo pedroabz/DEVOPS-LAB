@@ -4,7 +4,6 @@ using './main.bicep'
 // using the convention in docs/prd/v0-foundations.md §7.
 
 param envName = 'dev'
-param workload = 'devopslab'
 param location = 'northeurope'
 
 // F1 (free) by default. Deployment slots need Standard or higher — flip this to 'S1',
