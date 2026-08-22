@@ -1,9 +1,5 @@
-using './subscription.bicep'
+using './main.bicep'
 
-param location = 'westeurope'
-param environment = 'dev'
-
-param databaseName = 'myappdb'
-
-param sqlEntraAdminName = 'myapp-sql-admins'
-param sqlEntraAdminObjectId = 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'
+param resourceGroupName = 'rg-devopslab-dev-weu'
+param logAnalyticsName = 'log-analytics-devopslab-dev-weu'
+param ordersAppInsightsName = 'order-appi'
