@@ -67,6 +67,13 @@ jobs:
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
+      # Jobs do not share a filesystem, so the restore in `test` does not help here.
+      # Build before opening the firewall: a compile error should fail fast, not while
+      # a hole is open in the firewall.
+      - run: dotnet restore
+
+      - run: dotnet build --no-restore --configuration Release
+
       - uses: azure/login@v2
         with:
           client-id: ${{ vars.AZURE_CLIENT_ID }}
@@ -107,10 +114,11 @@ jobs:
             Encrypt=True;TrustServerCertificate=False;Connection Timeout=90;
         run: |
           dotnet tool install --global dotnet-ef --version 10.0.11
-          # First contact may hit a serverless auto-pause resume, which takes 30-60s and
-          # usually times out rather than waiting. One retry covers it.
-          dotnet ef database update --project src/infrastructure/DevOpsLab.Infrastructure \
-            || dotnet ef database update --project src/infrastructure/DevOpsLab.Infrastructure
+          # --no-build so this step cannot fail for compile reasons; the build above owns
+          # that. The only retry-worthy failure left is a serverless auto-pause resume,
+          # which takes 30-60s and usually times out rather than waiting.
+          dotnet ef database update --project src/infrastructure/DevOpsLab.Infrastructure --no-build \
+            || dotnet ef database update --project src/infrastructure/DevOpsLab.Infrastructure --no-build
 
       - name: Close the firewall
         if: always() # must run even when the migration failed
