@@ -152,15 +152,27 @@ jobs:
           package: publish
 
       # Liveness runs no checks, so this proves the process started, not that SQL works.
-      # Readiness is deliberately not asserted here: the database may be resuming.
+      # Readiness is deliberately not asserted here: the database may be resuming, and a
+      # 60s timeout on a paused database is expected behaviour, not a deployment failure.
+      #
+      # A cold App Service serves 404 from its default handler until the app is warm,
+      # which took over 75s on the first deploy to a brand new plan. 404 and 503 are
+      # therefore "not ready yet", not failure. Only the clock decides.
       - name: Smoke test
+        timeout-minutes: 6
         run: |
-          for i in 1 2 3 4 5; do
-            CODE=$(curl -s -o /dev/null -w '%{http_code}' \
-              "https://${{ env.WEBAPP_NAME }}.azurewebsites.net/health/live")
-            echo "attempt $i: HTTP $CODE"
-            [ "$CODE" = "200" ] && exit 0
-            sleep 15
+          DEADLINE=$((SECONDS + 300))
+          ATTEMPT=0
+          while [ $SECONDS -lt $DEADLINE ]; do
+            ATTEMPT=$((ATTEMPT + 1))
+            CODE=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 \
+              "https://${{ env.WEBAPP_NAME }}.azurewebsites.net/health/live" || echo "000")
+            echo "attempt $ATTEMPT ($((SECONDS))s): HTTP $CODE"
+            case "$CODE" in
+              200) echo "Live."; exit 0 ;;
+              404|503|000) sleep 10 ;;               # still starting
+              *) echo "::error::Unexpected status $CODE"; exit 1 ;;
+            esac
           done
-          echo "Liveness never returned 200"
+          echo "::error::Liveness never returned 200 within 5 minutes"
           exit 1
