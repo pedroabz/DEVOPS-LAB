@@ -107,18 +107,16 @@ jobs:
       # as sp-devopslab-github-dev, which is a member of sg-devopslab-sql-admins.
       - name: dotnet ef database update
         env:
-          ORDERS_CONNECTION_STRING: >-
-            Server=tcp:${{ env.SQL_SERVER }}.database.windows.net,1433;
-            Database=${{ env.SQL_DATABASE }};
-            Authentication=Active Directory Default;
-            Encrypt=True;TrustServerCertificate=False;Connection Timeout=90;
+          ORDERS_CONNECTION_STRING: "Server=tcp:${{ env.SQL_SERVER }}.database.windows.net,1433;Database=${{ env.SQL_DATABASE }};Authentication=Active Directory Default;Encrypt=True;TrustServerCertificate=False;Connection Timeout=90;"
         run: |
           dotnet tool install --global dotnet-ef --version 10.0.11
           # --no-build so this step cannot fail for compile reasons; the build above owns
           # that. The only retry-worthy failure left is a serverless auto-pause resume,
           # which takes 30-60s and usually times out rather than waiting.
-          dotnet ef database update --project src/infrastructure/DevOpsLab.Infrastructure --no-build \
-            || dotnet ef database update --project src/infrastructure/DevOpsLab.Infrastructure --no-build
+          dotnet ef database update --project src/infrastructure/DevOpsLab.Infrastructure \
+              --no-build --configuration Release \
+            || dotnet ef database update --project src/infrastructure/DevOpsLab.Infrastructure \
+              --no-build --configuration Release
 
       - name: Close the firewall
         if: always() # must run even when the migration failed
