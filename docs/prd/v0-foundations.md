@@ -35,6 +35,7 @@ Explicitly **not** in v0 — resist scope creep into these:
 | ~~API code, EF Core, migrations~~ — **landed early, see below** | ~~v1~~ |
 | Service Bus, Function App | v2 |
 | Entra app registrations for OAuth, RBAC, APIM | v3 |
+| **Key Vault** — nothing in v0–v2 holds a secret; managed identity replaces them all | v3, if needed |
 | `prod` environment, approvals, private endpoints, VPN/jump box | v4 |
 | Alert rules, dashboards, availability tests | v4 |
 
@@ -66,15 +67,15 @@ v0 is finished when **all** of these are true:
 ## 5. Architecture — the v0 slice
 
 ```
-  ┌──────────────────────── rg-devopslab-dev-neu ────────────────────────┐
+  ┌──────────────────────── rg-devopslab-dev-spc ────────────────────────┐
   │                                                                      │
-  │   ┌────────────────┐        ┌──────────────────┐                     │
-  │   │ App Service    │        │  Key Vault       │                     │
-  │   │ plan (F1 free) │        │  (RBAC mode)     │                     │
-  │   └───────┬────────┘        └────────▲─────────┘                     │
-  │           │                          │ get secrets                   │
-  │   ┌───────▼────────┐                 │                               │
-  │   │  Web App       ├─────────────────┘                               │
+  │   ┌────────────────┐                                                 │
+  │   │ App Service    │                                                 │
+  │   │ plan (B1)      │                                                 │
+  │   └───────┬────────┘                                                 │
+  │           │                                                          │
+  │   ┌───────▼────────┐                                                 │
+  │   │  Web App       │                                                 │
   │   │  (empty in v0) │                                                 │
   │   │  system MI ────┼──────────┐                                      │
   │   └───────┬────────┘          │ db_datareader / writer               │
@@ -98,26 +99,28 @@ v0 is finished when **all** of these are true:
 
 | Bicep | Live | # | Resource | SKU / config | Why this choice |
 |:---:|:---:|---|---|---|---|
-| ☑ | ☐ | 1 | Resource group | `northeurope` | Lifecycle boundary; one per environment |
+| ☑ | ☐ | 1 | Resource group | `spaincentral` | Lifecycle boundary; one per environment |
 | ☑ | ☐ | 2 | Log Analytics workspace | PerGB2018, 30-day retention, **daily cap 1 GB** | The cap is the cost guardrail; ingestion is the only thing here that can run away |
 | ☑ | ☐ | 3 | Application Insights | **Workspace-based**, linked to #2 | Classic AI is retired; workspace-based is required for modern features |
 | ☑ | ☐ | 4 | Azure SQL logical server | **Entra-only authentication**, admin = the Entra group from setup §11.1 | No password to leak or rotate; the whole point of the exercise |
 | ☑ | ☐ | 5 | Azure SQL database | **General Purpose serverless**, 0.5–1 vCore, **auto-pause 60 min** | Scales to zero; an idle DB costs storage only |
 | ☑ | ☐ | 6 | App Service plan | Linux, **B1** (~€11.53/mo) | **VNet integration requires Basic or higher — F1 cannot do it.** That is what buys the network boundary in rows 8–9. Also gives Always On. Slots still need S1 |
-| ☑ | ☐ | 7 | Web App | Linux, .NET 10 runtime, **system-assigned MI**, HTTPS-only | The MI is what authenticates to SQL and Key Vault |
-| ☐ | ☐ | 8 | **Virtual network + subnet** | One subnet, delegated to App Service, with the `Microsoft.Sql` **service endpoint** | Free. Gives SQL a network identity to trust that isn't an IP address |
-| ☐ | ☐ | 9 | **SQL virtual network rule** | Allows the app subnet | Replaces the all-of-Azure `0.0.0.0` rule. Nothing outside that subnet can reach the database |
-| ⚠ | ☐ | 10 | **SQL firewall rule** | Your home IP | So you can still connect from VS Code (task 4.7). The only public entry point |
-| ☐ | ☐ | 11 | Key Vault | Standard, **RBAC authorization**, soft-delete on | RBAC mode over access policies — access policies are legacy |
-| ☐ | ☐ | 12 | Role assignments | Web App MI → Key Vault Secrets User; MI → SQL | Your deployment identity already holds RBAC Administrator |
+| ☑ | ☐ | 7 | Web App | Linux, .NET 10 runtime, **system-assigned MI**, HTTPS-only | The MI is what authenticates to SQL |
+| ☑ | ☐ | 8 | **Virtual network + subnet** | `vnet-devopslab-dev-spc` 10.0.0.0/16; `snet-app` 10.0.1.0/24, delegated to `Microsoft.Web/serverFarms`, `Microsoft.Sql` service endpoint | Free. Gives SQL a network identity to trust that isn't an IP address |
+| ☑ | ☐ | 9 | **SQL virtual network rule** | `allow-app-subnet`, `ignoreMissingVnetServiceEndpoint: false` | Replaced the all-of-Azure `0.0.0.0` rule. Requires `outboundVnetRouting.applicationTraffic: true` on the Web App or it never matches |
+| ☑ | ☐ | 10 | **SQL firewall rule** | `my-laptop`, from `CLIENT_IP` in `.env` | So you can still connect from VS Code (task 4.7). The only public entry point |
+| ☐ | ☐ | 11 | **SQL database user for the Web App MI** | `CREATE USER ... FROM EXTERNAL PROVIDER` + role membership | **Not an ARM role assignment** — Bicep cannot do this. See task 6.5 |
 
-> ⚠ **Row 10 mismatch.** `iac/modules/sqlServer.bicep` currently declares
-> `AllowAllWindowsAzureIps` (`0.0.0.0–0.0.0.0`, all of Azure), not a rule for your IP. Decided
-> against, not yet changed.
+> **Networking background:** [VNets and subnets](../vnet-and-subnets-explained.md) ·
+> [App Service VNet integration](../app-service-vnet-integration-explained.md) ·
+> [SQL network access](../sql-network-access-explained.md)
 
-> **On Key Vault in v0:** it holds nothing yet. Deploy it anyway so the pattern and permissions
-> exist before v1 needs them. Deferring it means retrofitting identity plumbing later, which is the
-> harder job.
+> **Why no Key Vault.** It was in the first draft of this inventory, and it did not survive
+> scrutiny. Key Vault stores passwords and keys; managed identity eliminates them. SQL, App
+> Insights, Service Bus and storage all authenticate by identity, so through v2 there is nothing to
+> put in a vault. The first plausible secret is an OAuth client secret in v3 — and even that can be
+> a certificate or federated credential instead. ARM role assignments, the other reason to build it,
+> are genuinely needed in v2 for the Function's Service Bus and storage roles.
 
 ## 7. Naming and tagging convention
 
@@ -125,14 +128,13 @@ Adopt [Microsoft CAF abbreviations](https://learn.microsoft.com/azure/cloud-adop
 
 | Resource | Pattern | Note |
 |---|---|---|
-| Resource group | `rg-devopslab-dev-neu` | |
-| Log Analytics | `log-devopslab-dev-neu` | |
-| App Insights | `appi-devopslab-dev-neu` | |
-| SQL server | `sql-devopslab-dev-neu-pabz` | **globally unique** — hence the `owner` token |
+| Resource group | `rg-devopslab-dev-spc` | |
+| Log Analytics | `log-devopslab-dev-spc` | |
+| App Insights | `appi-devopslab-dev-spc` | |
+| SQL server | `sql-devopslab-dev-spc-pabz` | **globally unique** — hence the `owner` token |
 | SQL database | `sqldb-orders-dev` | |
-| App Service plan | `asp-devopslab-dev-neu` | |
-| Web App | `app-devopslab-dev-neu-pabz` | **globally unique** — hence the `owner` token |
-| Key Vault | `kv-dvlab-dev-<unique>` | **globally unique, ≤24 chars** |
+| App Service plan | `asp-devopslab-dev-spc` | |
+| Web App | `app-devopslab-dev-spc-pabz` | **globally unique** — hence the `owner` token |
 
 Two of these are globally unique across all of Azure. A short `owner` token disambiguates them.
 `uniqueString()` is the alternative, but it produces unreadable names you cannot predict before
@@ -235,7 +237,7 @@ hint, a review, or the solution.
 > usual choice. Modules creating RG-scoped resources also need an explicit `scope:`. Work it out
 > from the error messages; they're clear once you know scope is the issue.
 
-**Done when:** `az group show -n rg-devopslab-dev-neu` returns your tagged resource group, and a
+**Done when:** `az group show -n rg-devopslab-dev-spc` returns your tagged resource group, and a
 second deployment reports no changes.
 
 ---
@@ -315,26 +317,21 @@ string is an app setting rather than baked into code.
 
 ---
 
-### M6 · Identity wiring
+### M6 · Database access for the managed identity
 
-**Learn:** role assignments in Bicep, consuming `principalId` from a module output, deterministic
-GUIDs for assignment names.
+**Learn:** why some Azure permissions are not ARM permissions, and what to do about it.
 
-- [ ] **6.1** Add Key Vault in **RBAC authorization** mode with soft-delete enabled.
-      <br>*Look up:* `enableRbacAuthorization`; why access policies are legacy.
-- [ ] **6.2** Grant the Web App's managed identity the **Key Vault Secrets User** role.
-      <br>*Look up:* `Microsoft.Authorization/roleAssignments`, built-in role definition IDs.
-- [ ] **6.3** Work out how role assignment **names** must be generated so redeployment is idempotent.
-      <br>*Look up:* `guid()` with a deterministic seed — scope + principal + role.
-- [ ] **6.4** Deploy twice. Confirm the second run doesn't fail on a duplicate assignment.
+> ARM role assignments moved to **v2**, where the Function's managed identity genuinely needs
+> `Azure Service Bus Data Receiver` and a storage role. In v0 there is nothing that needs one.
+
 - [ ] **6.5** Decide how the managed identity gets **database** access. This is not an ARM role
       assignment — it's T-SQL (`CREATE USER ... FROM EXTERNAL PROVIDER` plus role membership) that
       Bicep cannot execute. Options: deployment script, pipeline step, or manual now / automated in v1.
       <br>*Look up:* `Microsoft.Resources/deploymentScripts`; contained database users.
 - [ ] **6.6** Write the decision from 6.5 into an ADR **before** implementing it.
 
-**Done when:** role assignments exist against the MI, redeployment is clean, and 6.5 is a recorded
-decision rather than an open question.
+**Done when:** the Web App's managed identity can query the database, and how it got that access is
+a recorded decision rather than an open question.
 
 ---
 
@@ -383,11 +380,11 @@ decision rather than an open question.
 **Learn:** ADRs as a habit; proving rebuild-from-scratch actually works.
 
 - [ ] **9.1** Write `scripts/teardown.sh` to delete the resource group.
-- [ ] **9.2** Handle the **Key Vault soft-delete tombstone** in that script — a rebuild with the same
-      name fails for 90 days otherwise.
-      <br>*Look up:* `az keyvault purge`; purge protection vs soft delete.
-- [ ] **9.3** Write ADRs for: Entra-only SQL auth, serverless tier, Key Vault RBAC mode, and the 6.5
-      decision.
+- [ ] **9.2** Confirm nothing in v0 leaves a tombstone or holds a name after deletion. (Key Vault
+      would have — it is no longer in scope. Worth re-checking when v3 adds one.)
+      <br>*Look up:* soft delete and purge protection, so you recognise the problem when it appears.
+- [ ] **9.3** Write ADRs for: Entra-only SQL auth, serverless tier, the VNet + service endpoint
+      choice, and the 6.5 decision.
       <br>*Look up:* the Michael Nygard ADR format — keep them to one page.
 - [ ] **9.4** Write `iac/README.md`: how to deploy manually, how to run `what-if` locally, what
       each module does.
@@ -407,14 +404,11 @@ using nothing but the pipeline.
 | SQL MI grant mechanism | deployment script / pipeline step / manual | See task 6.5. No wrong answer, but pick consciously. |
 | `what-if` on PRs | comment-only vs blocking check | Comment-only is friendlier while you're iterating alone. |
 | Module granularity | one per resource vs grouped | Grouped (`observability.bicep`, `data.bicep`) tends to age better than one-file-per-resource. |
-| Secrets in Key Vault | populate in v0 vs leave empty | Empty is fine — the point is that the plumbing exists. |
 | Parameter file location | `iac/` root vs `iac/params/` | Root reads better for one environment; `params/` scales when prod arrives in v4. |
 
 ## 10. Risks and known gotchas
 
-- **Key Vault soft-delete.** Deleting a vault leaves a tombstone holding the name for 90 days. A
-  rebuild with the same name fails unless you purge it first. Bake this into the teardown script.
-- **SQL server names are global.** So are Web App and Key Vault names. Collisions surface as
+- **SQL server names are global.** So are Web App names. Collisions surface as
   confusing deployment errors.
 - **Serverless auto-pause resume latency.** The first query after a pause takes ~30–60 seconds.
   This will look like a bug in v1. It isn't.
@@ -453,4 +447,3 @@ is how the learning gets skipped.
 - [Azure SQL Entra-only authentication](https://learn.microsoft.com/azure/azure-sql/database/authentication-azure-ad-only-authentication)
 - [Serverless compute tier](https://learn.microsoft.com/azure/azure-sql/database/serverless-tier-overview)
 - [Managed identity with App Service](https://learn.microsoft.com/azure/app-service/overview-managed-identity)
-- [Key Vault RBAC guide](https://learn.microsoft.com/azure/key-vault/general/rbac-guide)

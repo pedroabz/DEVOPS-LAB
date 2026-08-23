@@ -48,7 +48,7 @@ A checklist to tick off. By the end of this guide you should have:
 | Tenant | `61bd2f87-a074-421c-9c1e-a2137bc0c1ca` |
 | Deployment identity | `sp-devopslab-github-dev` → client ID `2e50e486-a03e-402f-9e2e-47f530aac6b6` |
 | Repository | `pedroabz/DEVOPS-LAB` |
-| Region | `northeurope` |
+| Region | `spaincentral` |
 
 None of these are secrets — they are identifiers. The only thing that can authenticate as that
 identity is a GitHub Actions token from this specific repository.
@@ -105,8 +105,8 @@ Worth five minutes now because every `az` command and every Bicep scope depends 
 ```
 Entra ID Tenant                  ← your identity boundary (users, groups, app registrations)
 └── Subscription                 ← your billing + quota boundary
-    └── Resource Group           ← lifecycle + RBAC boundary  (rg-devopslab-dev-neu)
-        └── Resource             ← the actual thing  (sql-devopslab-dev-neu)
+    └── Resource Group           ← lifecycle + RBAC boundary  (rg-devopslab-dev-spc)
+        └── Resource             ← the actual thing  (sql-devopslab-dev-spc)
 ```
 
 - **Tenant**: where identities live. App registrations, managed identities, and groups are tenant-level.
@@ -292,17 +292,17 @@ Keep this shell open for the rest of the guide, or note the values down.
 ### 6.3 Choose your region
 
 Pick one region and use it everywhere — cross-region traffic costs money and adds latency.
-Good European options: `westeurope` (Netherlands), `northeurope` (Ireland), `swedencentral`,
+Good European options: `westeurope` (Netherlands), `spaincentral` (Ireland), `swedencentral`,
 `francecentral`. In the Americas: `eastus`, `brazilsouth`.
 
 ```bash
-export AZ_LOCATION=northeurope    # change to suit; this becomes the `location` param in Bicep
+export AZ_LOCATION=spaincentral    # change to suit; this becomes the `location` param in Bicep
 ```
 
 > ⚠️ **`westeurope` is closed to new customers.** A `what-if` against it fails every resource with
 > `RequestDisallowedByAzure — The selected region is currently not accepting new customers`. This is a
 > subscription-age restriction, not a quota you can request an increase for, and it is not visible
-> until you try to deploy. This lab uses **`northeurope`**; `swedencentral`, `francecentral` and
+> until you try to deploy. This lab uses **`spaincentral`**; `swedencentral`, `francecentral` and
 > `uksouth` were also verified open. Test a candidate region with a `what-if` **before** you commit
 > to it — the region is threaded through every resource name and moving later means recreating
 > everything.
@@ -671,7 +671,7 @@ Rough monthly figures for a lab that is idle most of the time. Treat as order-of
 1. **Tear down between sessions.** Because everything is in Bicep, deleting is safe and re-creating
    takes one pipeline run:
    ```bash
-   az group delete --name rg-devopslab-dev-neu --yes --no-wait
+   az group delete --name rg-devopslab-dev-spc --yes --no-wait
    ```
 2. **Let SQL auto-pause.** Don't set a keep-alive ping. An idle serverless database costs almost nothing.
 3. **Cap Log Analytics.** Set a daily ingestion cap (e.g. 1 GB/day) on the workspace — a chatty
@@ -693,7 +693,7 @@ Rough monthly figures for a lab that is idle most of the time. Treat as order-of
 | `AuthorizationFailed` when Bicep creates a role assignment | Deployment identity lacks RBAC-writing rights | Re-run §8.3's second `az role assignment create`. |
 | `MissingSubscriptionRegistration` | Resource provider not registered | Re-run §6.4 and wait for `Registered`. |
 | `SubscriptionNotFound` / resources unreachable | Free credit exhausted, subscription disabled by spending limit | Portal → Subscriptions → your subscription → **Remove spending limit** / upgrade to pay-as-you-go. |
-| `LocationNotAvailableForResourceType` or capacity errors | Region out of capacity for that SKU | Try `northeurope` / `eastus`, or a different SKU. |
+| `LocationNotAvailableForResourceType` or capacity errors | Region out of capacity for that SKU | Try `spaincentral` / `eastus`, or a different SKU. |
 | Card declined at signup | Prepaid or virtual card | Use a standard credit/debit card. |
 | `az bicep` command not found | Bicep not installed into the CLI | `az bicep install` (it is not a separate brew formula). |
 | `brew install azure-functions-core-tools@4` fails: *"Your Command Line Tools are too outdated"* | The formula builds from source and needs current Xcode CLT | `sudo rm -rf /Library/Developer/CommandLineTools && sudo xcode-select --install`, then retry the brew install. Only needed for local Functions development (v2). |

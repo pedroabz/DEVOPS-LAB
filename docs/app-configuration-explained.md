@@ -15,7 +15,7 @@ Your app needs to talk to a database. To do that it needs a connection string â€
 basically. Something like:
 
 ```
-Server=tcp:sql-devopslab-dev-neu-pabz.database.windows.net,1433;Database=sqldb-orders-dev;...
+Server=tcp:sql-devopslab-dev-spc-pabz.database.windows.net,1433;Database=sqldb-orders-dev;...
 ```
 
 Now: where should that text live?
@@ -25,7 +25,7 @@ You have two obvious choices, and both are bad.
 **Bad option 1: write it in the code.**
 
 ```csharp
-var connection = "Server=tcp:sql-devopslab-dev-neu-pabz...";
+var connection = "Server=tcp:sql-devopslab-dev-spc-pabz...";
 ```
 
 Now your app only works against that one database. To run it on your laptop you'd have to edit

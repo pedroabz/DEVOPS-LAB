@@ -44,27 +44,48 @@ iac/
   subscription.dev.bicepparam   the dev environment's values
   bicepconfig.json              linter config (security + dead code = errors)
   modules/
+    network.bicep               VNet + snet-app (delegated, Microsoft.Sql service endpoint)
     observability.bicep         Log Analytics + Application Insights
-    sqlServer.bicep             SQL server + database + firewall rule
-    appService.bicep            App Service plan + Web App
+    sqlServer.bicep             SQL server + database + firewall rule + VNet rule
+    appService.bicep            App Service plan + Web App (integrated into snet-app)
+scripts/
+  deploy-dev.sh                 sources .env, then what-if (default) or deploy
 docs/
   azure-setup.md                one-time account bootstrap (done)
   prd/v0-foundations.md         v0 spec + milestone task list
   adr/                          decision records
+  *-explained.md                plain-language topic explainers
+.env                            local values, gitignored (CLIENT_IP)
+.env.example                    committed template
 ```
 
 Nothing is deployed yet. Everything so far has been validated with `what-if` only.
 
+## Local values
+
+`subscription.dev.bicepparam` reads `CLIENT_IP` via `readEnvironmentVariable()`. `az` does not load
+`.env` on its own, so deploy through `scripts/deploy-dev.sh`, which sources it first. There is
+deliberately **no default** — an unset `CLIENT_IP` fails with `BCP427` rather than silently
+producing an empty firewall rule.
+
 ## Commands
 
 - `/add-resource <thing>` — guided interview for adding an Azure resource. Use it for infra work.
+- `/estimate-cost` — live prices from the Azure Retail Prices API, per resource, idle vs active.
+- `/deep-dive <topic>` — plain-language explainer: how it works, trade-offs, what each setting does.
 
 ## Context worth not re-deriving
 
-- Region is under discussion: currently `northeurope` in code; `spaincentral` is closer to Portugal
+- Region is under discussion: currently `spaincentral` in code; `spaincentral` is closer to Portugal
   and was verified to have Flex Consumption and APIM.
 - GitHub OIDC is wired and working. Federated credentials exist for both the plain and the
   **immutable** subject format (`repo:pedroabz@34903747/DEVOPS-LAB@1339815353:...`).
 - Deployment slots require **Standard (S1)**. Free and Basic have none.
 - Azure SQL serverless takes **30–60s to resume** from auto-pause; see `docs/adr/0001`.
 - Bicep has no float type — decimals need `json('0.5')`.
+- App Service VNet integration is **outbound only** and reroutes rather than blocks. It needs
+  `outboundVnetRouting.applicationTraffic: true`, or SQL traffic leaves by the public path and the
+  virtual network rule never matches — deploys green, connection refused.
+- `vnetRouteAllEnabled` / `WEBSITE_VNET_ROUTE_ALL` are the **legacy** names for that setting.
+- `what-if` short-circuits `sqlDeployment` and `appServiceDeployment` because they consume
+  `network.outputs.appSubnetId`. Their resources are real but invisible in the preview.

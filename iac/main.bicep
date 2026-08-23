@@ -8,7 +8,7 @@ targetScope = 'subscription'
 param envName string
 
 @description('Azure region for every resource. Independent of the --location passed to `az deployment sub create`, which only says where the deployment RECORD is stored.')
-param location string = 'northeurope'
+param location string = 'spaincentral'
 
 @description('Display name of the Entra group that administers SQL.')
 param sqlEntraAdminName string
@@ -19,9 +19,9 @@ param sqlEntraAdminObjectId string
 @description('Your public IP, so SQL lets you connect from VS Code. Supplied via the CLIENT_IP environment variable — see .env.example.')
 param clientIpAddress string
 
-// Names follow docs/prd/v0-foundations.md §7. 'neu' = northeurope.
+// Names follow docs/prd/v0-foundations.md §7. 'neu' = spaincentral.
 // Single-region lab; change this alongside `location`.
-var suffix = 'devopslab-${envName}-neu'
+var suffix = 'devopslab-${envName}-spc'
 
 // SQL server and Web App names are globally unique across ALL of Azure, so they
 // carry an extra token. If either name is ever taken, change this.

@@ -14,7 +14,7 @@ cd "$REPO_ROOT"
 
 TEMPLATE="iac/main.bicep"
 PARAMS="iac/subscription.dev.bicepparam"
-LOCATION="northeurope"   # where the deployment RECORD is stored, not where resources go
+LOCATION="spaincentral"   # where the deployment RECORD is stored, not where resources go
 NAME="devopslab-dev"
 
 if [[ ! -f .env ]]; then

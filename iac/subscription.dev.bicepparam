@@ -4,7 +4,7 @@ using './main.bicep'
 // using the convention in docs/prd/v0-foundations.md §7.
 
 param envName = 'dev'
-param location = 'northeurope'
+param location = 'spaincentral'
 
 param sqlEntraAdminName = 'sg-devopslab-sql-admins'
 param sqlEntraAdminObjectId = 'cffa7571-2a23-417e-b71f-8cff180f7af8'

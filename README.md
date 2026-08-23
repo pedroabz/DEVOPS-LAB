@@ -71,7 +71,7 @@ Built in slices. Each version is deployable and demoable on its own.
 - [ ] Azure account + subscription + budget alerts ([`docs/azure-setup.md`](docs/azure-setup.md))
 - [ ] GitHub OIDC federated identity, no stored secrets
 - [ ] Bicep: resource group, Log Analytics, **Application Insights**, **Azure SQL** (serverless),
-      App Service plan + Web App, Key Vault
+      App Service plan + Web App
 - [ ] **VNet + subnet with a `Microsoft.Sql` service endpoint**, App Service VNet integration, and a
       SQL virtual network rule — so the database is reachable only from that subnet, never from
       "all of Azure"
@@ -123,6 +123,8 @@ is Bicep like the rest — no dashboards clicked together in the portal.
 
 ### v3 — Security & the front door
 - [ ] Entra ID app registrations, OAuth 2.0 client credentials + auth code flows
+- [ ] **Key Vault**, *if* the OAuth flow needs a client secret — everything before this point
+      uses managed identity, so there may be nothing to store
 - [ ] **RBAC** in the API: scopes and app roles mapped to endpoint policies
 - [ ] **API Management** in front of the API: JWT validation, rate limiting, products, versioning
 - [ ] API surface locked to APIM only

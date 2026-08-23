@@ -27,7 +27,7 @@ Scope: **$ARGUMENTS** (empty = the whole `iac/` template.)
 ## Step 1 — Find the resources and their SKUs
 
 ```bash
-az deployment sub what-if --location northeurope --name devopslab-dev \
+az deployment sub what-if --location spaincentral --name devopslab-dev \
   --template-file iac/main.bicep --parameters iac/subscription.dev.bicepparam \
   --result-format ResourceIdOnly
 ```

@@ -90,7 +90,7 @@ is still publicly addressable. You've changed *who's allowed in*, not *whether t
 The real thing. SQL gets an actual private IP inside your VNet:
 
 ```
-sql-devopslab-dev-neu-pabz.database.windows.net → 10.0.2.4
+sql-devopslab-dev-spc-pabz.database.windows.net → 10.0.2.4
 ```
 
 A private DNS zone rewrites the hostname to resolve to that private address for anything in your

@@ -1,6 +1,6 @@
 # The Web App's front door
 
-Your Web App will get a public URL — `app-devopslab-dev-neu-pabz.azurewebsites.net` — the moment
+Your Web App will get a public URL — `app-devopslab-dev-spc-pabz.azurewebsites.net` — the moment
 it exists. Anyone on the internet can type that in. Three settings control *how* they're allowed
 to reach it. Here's what each one actually does.
 
