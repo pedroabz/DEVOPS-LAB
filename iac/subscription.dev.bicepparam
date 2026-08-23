@@ -6,10 +6,9 @@ using './main.bicep'
 param envName = 'dev'
 param location = 'northeurope'
 
-// F1 (free) by default. Deployment slots need Standard or higher — flip this to 'S1',
-// redeploy, practise the slot swap, then flip it back. Plans bill hourly, so an
-// afternoon on S1 costs roughly EUR 0.10.
-param appServicePlanSku = 'F1'
-
 param sqlEntraAdminName = 'sg-devopslab-sql-admins'
 param sqlEntraAdminObjectId = 'cffa7571-2a23-417e-b71f-8cff180f7af8'
+
+// Your public IP, for the SQL firewall rule. Kept out of git: set CLIENT_IP in .env
+// (gitignored) and source it before deploying — scripts/deploy-dev.sh does that for you.
+param clientIpAddress = readEnvironmentVariable('CLIENT_IP')

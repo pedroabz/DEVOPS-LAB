@@ -32,17 +32,25 @@ Explicitly **not** in v0 — resist scope creep into these:
 
 | Deferred | To |
 |---|---|
-| API code, EF Core, migrations | v1 |
+| ~~API code, EF Core, migrations~~ — **landed early, see below** | ~~v1~~ |
 | Service Bus, Function App | v2 |
 | Entra app registrations for OAuth, RBAC, APIM | v3 |
-| `prod` environment, approvals, private endpoints | v4 |
+| `prod` environment, approvals, private endpoints, VPN/jump box | v4 |
 | Alert rules, dashboards, availability tests | v4 |
+
+> **Deviation — API built ahead of the roadmap (2026-08-23).** The Orders API was implemented
+> during v0 rather than v1: four projects under `src/` (Domain, Application, Infrastructure, Api),
+> unit tests under `tests/`, and a checked-in `InitialCreate` EF migration. §1's "the Web App is
+> deployed empty" and §4's "the empty-app placeholder page is fine" therefore no longer describe
+> the intent, though they remain accurate until a deployment pipeline exists to ship the code.
+> Nothing in M1–M9 below changed. The v1 checklist in `README.md` still owns deployment,
+> managed-identity SQL auth, and the `api-ci` workflow.
 
 ## 4. Definition of done
 
 v0 is finished when **all** of these are true:
 
-- [ ] A PR touching `infra/` posts a `what-if` result and does not deploy.
+- [ ] A PR touching `iac/` posts a `what-if` result and does not deploy.
 - [ ] Merging that PR to `main` deploys automatically and succeeds.
 - [ ] `az group show` reveals the resource group with every resource from §6 present.
 - [ ] The Web App responds on its default hostname (the empty-app placeholder page is fine).
@@ -86,17 +94,26 @@ v0 is finished when **all** of these are true:
 
 ## 6. Resource inventory
 
-| # | Resource | SKU / config | Why this choice |
-|---|---|---|---|
-| 1 | Resource group | `northeurope` | Lifecycle boundary; one per environment |
-| 2 | Log Analytics workspace | PerGB2018, 30-day retention, **daily cap 1 GB** | The cap is the cost guardrail; ingestion is the only thing here that can run away |
-| 3 | Application Insights | **Workspace-based**, linked to #2 | Classic AI is retired; workspace-based is required for modern features |
-| 4 | Azure SQL logical server | **Entra-only authentication**, admin = the Entra group from setup §11.1 | No password to leak or rotate; the whole point of the exercise |
-| 5 | Azure SQL database | **General Purpose serverless**, 0.5–1 vCore, **auto-pause 60 min** | Scales to zero; an idle DB costs storage only |
-| 6 | App Service plan | Linux, **F1** (free) | Zero compute cost. Slots need **S1** — B1 has none either. Scale up temporarily when v1 practises swaps |
-| 7 | Web App | Linux, .NET 10 runtime, **system-assigned MI**, HTTPS-only | The MI is what authenticates to SQL and Key Vault |
-| 8 | Key Vault | Standard, **RBAC authorization**, soft-delete on | RBAC mode over access policies — access policies are legacy |
-| 9 | Role assignments | Web App MI → Key Vault Secrets User; MI → SQL | Your deployment identity already holds RBAC Administrator |
+**Bicep** = declared in `iac/`. **Live** = actually deployed to Azure. Nothing is deployed yet.
+
+| Bicep | Live | # | Resource | SKU / config | Why this choice |
+|:---:|:---:|---|---|---|---|
+| ☑ | ☐ | 1 | Resource group | `northeurope` | Lifecycle boundary; one per environment |
+| ☑ | ☐ | 2 | Log Analytics workspace | PerGB2018, 30-day retention, **daily cap 1 GB** | The cap is the cost guardrail; ingestion is the only thing here that can run away |
+| ☑ | ☐ | 3 | Application Insights | **Workspace-based**, linked to #2 | Classic AI is retired; workspace-based is required for modern features |
+| ☑ | ☐ | 4 | Azure SQL logical server | **Entra-only authentication**, admin = the Entra group from setup §11.1 | No password to leak or rotate; the whole point of the exercise |
+| ☑ | ☐ | 5 | Azure SQL database | **General Purpose serverless**, 0.5–1 vCore, **auto-pause 60 min** | Scales to zero; an idle DB costs storage only |
+| ☑ | ☐ | 6 | App Service plan | Linux, **B1** (~€11.53/mo) | **VNet integration requires Basic or higher — F1 cannot do it.** That is what buys the network boundary in rows 8–9. Also gives Always On. Slots still need S1 |
+| ☑ | ☐ | 7 | Web App | Linux, .NET 10 runtime, **system-assigned MI**, HTTPS-only | The MI is what authenticates to SQL and Key Vault |
+| ☐ | ☐ | 8 | **Virtual network + subnet** | One subnet, delegated to App Service, with the `Microsoft.Sql` **service endpoint** | Free. Gives SQL a network identity to trust that isn't an IP address |
+| ☐ | ☐ | 9 | **SQL virtual network rule** | Allows the app subnet | Replaces the all-of-Azure `0.0.0.0` rule. Nothing outside that subnet can reach the database |
+| ⚠ | ☐ | 10 | **SQL firewall rule** | Your home IP | So you can still connect from VS Code (task 4.7). The only public entry point |
+| ☐ | ☐ | 11 | Key Vault | Standard, **RBAC authorization**, soft-delete on | RBAC mode over access policies — access policies are legacy |
+| ☐ | ☐ | 12 | Role assignments | Web App MI → Key Vault Secrets User; MI → SQL | Your deployment identity already holds RBAC Administrator |
+
+> ⚠ **Row 10 mismatch.** `iac/modules/sqlServer.bicep` currently declares
+> `AllowAllWindowsAzureIps` (`0.0.0.0–0.0.0.0`, all of Azure), not a rule for your IP. Decided
+> against, not yet changed.
 
 > **On Key Vault in v0:** it holds nothing yet. Deploy it anyway so the pattern and permissions
 > exist before v1 needs them. Deferring it means retrofitting identity plumbing later, which is the
@@ -162,23 +179,23 @@ hint, a review, or the solution.
 
 - [x] **1.1** `.gitignore` — .NET output, compiled ARM, local settings, OS cruft. *(done for you —
       boilerplate, not the object of study)*
-      <br>Note the negation pattern: `infra/**/*.json` ignores `bicep build` output, and
-      `!infra/**/bicepconfig.json` keeps the config tracked.
+      <br>Note the negation pattern: `iac/**/*.json` ignores `bicep build` output, and
+      `!iac/**/bicepconfig.json` keeps the config tracked.
 - [x] **1.2** `.editorconfig` — 2-space for `.bicep`/`.bicepparam`/YAML/JSON, 4-space for `.cs`,
       plus a few C# conventions. *(done for you)*
-- [x] **1.3** `infra/bicepconfig.json` — linter enabled. *(done for you)* Rules are split three ways:
+- [x] **1.3** `iac/bicepconfig.json` — linter enabled. *(done for you)* Rules are split three ways:
       security and dead-code rules are **errors**, style rules are **warnings**, and
       `use-recent-api-versions` is **off** because it flags every API version as stale within months.
       <br>*Worth knowing:* verified by building a throwaway file with an unused param and confirming
       it failed as `Error` rather than the default `Warning`. A misspelled rule name is silently
       ignored, so a config that "looks right" can do nothing.
-- [ ] **1.4** Create an empty `infra/main.bicep` with only `targetScope` set. Confirm it builds.
+- [ ] **1.4** Create an empty `iac/main.bicep` with only `targetScope` set. Confirm it builds.
       <br>*Look up:* `targetScope` values and what each one can create.
-- [ ] **1.5** Repoint or replace `infra/subscription.dev.bicepparam` — its `using` line still
-      references the deleted `subscription.bicep`. Decide now whether params live at `infra/` root or
-      in `infra/params/`.
+- [ ] **1.5** Repoint or replace `iac/subscription.dev.bicepparam` — its `using` line still
+      references the deleted `subscription.bicep`. Decide now whether params live at `iac/` root or
+      in `iac/params/`.
       <br>*Look up:* `.bicepparam` files and the `using` statement.
-- [ ] **1.6** Verify the toolchain: `az bicep build --file infra/main.bicep` exits clean, and the VS
+- [ ] **1.6** Verify the toolchain: `az bicep build --file iac/main.bicep` exits clean, and the VS
       Code Bicep extension reports no problems.
 
 **Done when:** the file builds with zero linter warnings and you understand every line in
@@ -230,7 +247,7 @@ second deployment reports no changes.
 
 **Learn:** why App Insights needs a workspace, retention vs daily cap, passing values between modules.
 
-- [ ] **3.1** Create `infra/modules/observability.bicep` (or two modules — your call; note the
+- [ ] **3.1** Create `iac/modules/observability.bicep` (or two modules — your call; note the
       decision).
 - [ ] **3.2** Add a Log Analytics workspace: `PerGB2018`, 30-day retention, **daily cap 1 GB**.
       <br>*Look up:* `workspaceCapping.dailyQuotaGb`, and what happens when the cap is hit.
@@ -326,7 +343,7 @@ decision rather than an open question.
 **Learn:** `paths:` filters, OIDC in practice, `what-if` output modes, writing PR comments from Actions.
 
 - [ ] **7.1** Create `.github/workflows/infra-ci.yml` triggered on `pull_request` with a `paths:`
-      filter for `infra/**`.
+      filter for `iac/**`.
       <br>*Look up:* `paths` filters; why they matter in a monorepo.
 - [ ] **7.2** Add the OIDC login block. Remember `permissions: id-token: write`.
       <br>*Look up:* re-read setup §9 — the `github-pr` federated credential already exists for this.
@@ -347,7 +364,7 @@ decision rather than an open question.
 
 **Learn:** GitHub Environments, concurrency groups, idempotency.
 
-- [ ] **8.1** Create `.github/workflows/infra-cd.yml` on push to `main`, filtered to `infra/**`.
+- [ ] **8.1** Create `.github/workflows/infra-cd.yml` on push to `main`, filtered to `iac/**`.
 - [ ] **8.2** Target the `dev` GitHub Environment.
       <br>*Look up:* `environment:` in a job; the `github-env-dev` federated credential from setup.
 - [ ] **8.3** Add a concurrency group so two deployments can never overlap.
@@ -372,7 +389,7 @@ decision rather than an open question.
 - [ ] **9.3** Write ADRs for: Entra-only SQL auth, serverless tier, Key Vault RBAC mode, and the 6.5
       decision.
       <br>*Look up:* the Michael Nygard ADR format — keep them to one page.
-- [ ] **9.4** Write `infra/README.md`: how to deploy manually, how to run `what-if` locally, what
+- [ ] **9.4** Write `iac/README.md`: how to deploy manually, how to run `what-if` locally, what
       each module does.
 - [ ] **9.5** Run the full rebuild test — tear down, re-run the pipeline, everything returns green.
 - [ ] **9.6** Check Cost Analysis and record actual spend against the €5 estimate in §4.
@@ -391,7 +408,7 @@ using nothing but the pipeline.
 | `what-if` on PRs | comment-only vs blocking check | Comment-only is friendlier while you're iterating alone. |
 | Module granularity | one per resource vs grouped | Grouped (`observability.bicep`, `data.bicep`) tends to age better than one-file-per-resource. |
 | Secrets in Key Vault | populate in v0 vs leave empty | Empty is fine — the point is that the plumbing exists. |
-| Parameter file location | `infra/` root vs `infra/params/` | Root reads better for one environment; `params/` scales when prod arrives in v4. |
+| Parameter file location | `iac/` root vs `iac/params/` | Root reads better for one environment; `params/` scales when prod arrives in v4. |
 
 ## 10. Risks and known gotchas
 

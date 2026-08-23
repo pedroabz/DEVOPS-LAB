@@ -1,7 +1,7 @@
 # Azure setup guide
 
 Everything you need to do **once**, by hand, before any code or Bicep in this repo can deploy.
-After this guide, all further Azure resources are created by pipelines from `infra/`.
+After this guide, all further Azure resources are created by pipelines from `iac/`.
 
 Written for **macOS + zsh**. Estimated time: 45–60 minutes, most of it waiting on account verification.
 
@@ -234,7 +234,7 @@ done
 
 | Extension | ID | What you'll use it for |
 |---|---|---|
-| Bicep | `ms-azuretools.vscode-bicep` | IntelliSense, linting, and the resource visualiser for `infra/` |
+| Bicep | `ms-azuretools.vscode-bicep` | IntelliSense, linting, and the resource visualiser for `iac/` |
 | Azure Account | `ms-vscode.azure-account` | Sign-in + subscription picker shared by the Azure extensions |
 | Azure Resources | `ms-azuretools.vscode-azureresourcegroups` | Browse deployed resources from the sidebar |
 | SQL Server (mssql) | `ms-mssql.mssql` | Query Azure SQL, inspect schema, run migrations by hand |
@@ -716,4 +716,4 @@ Rough monthly figures for a lab that is idle most of the time. Treat as order-of
 ---
 
 **Next step:** [`docs/conventions.md`](conventions.md), then start on v0 — the Bicep foundation in
-[`infra/`](../infra/).
+[`iac/`](../iac/).

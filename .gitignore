@@ -1,9 +1,9 @@
 # ---------- Bicep ----------
 # Compiled ARM templates emitted by `bicep build`. The .bicep file is the source
 # of truth; the JSON is a build artifact. Negations keep real config tracked.
-infra/**/*.json
-!infra/**/bicepconfig.json
-!infra/**/*.parameters.json
+iac/**/*.json
+!iac/**/bicepconfig.json
+!iac/**/*.parameters.json
 
 # ---------- .NET ----------
 bin/

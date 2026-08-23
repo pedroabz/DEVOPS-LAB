@@ -13,7 +13,7 @@ telemetry, gateways, and CI/CD.
 
 One repository holds three kinds of thing, versioned and deployed together:
 
-1. **`infra/`** — every Azure resource, declared in Bicep. Nothing is created by hand in the portal
+1. **`iac/`** — every Azure resource, declared in Bicep. Nothing is created by hand in the portal
    after the initial account bootstrap. If it exists in Azure, it exists in this folder.
 2. **`src/api/`** — an ASP.NET Core Minimal API (.NET 10) doing CRUD against Azure SQL, instrumented
    with Application Insights.
@@ -72,6 +72,9 @@ Built in slices. Each version is deployable and demoable on its own.
 - [ ] GitHub OIDC federated identity, no stored secrets
 - [ ] Bicep: resource group, Log Analytics, **Application Insights**, **Azure SQL** (serverless),
       App Service plan + Web App, Key Vault
+- [ ] **VNet + subnet with a `Microsoft.Sql` service endpoint**, App Service VNet integration, and a
+      SQL virtual network rule — so the database is reachable only from that subnet, never from
+      "all of Azure"
 - [ ] `infra-ci` workflow: lint + `what-if` on PR, deploy on merge
 
 ### v1 — The API
@@ -126,7 +129,7 @@ is Bicep like the rest — no dashboards clicked together in the portal.
 
 ### v4 — Production hardening _(stretch)_
 - [ ] `prod` environment + promotion pipeline with manual approval
-- [ ] Private endpoints, VNet integration
+- [ ] Private endpoints (SQL public access off entirely) + the VPN/jump-box access it forces
 - [ ] Availability tests (synthetic monitoring) feeding the v1.5 alerts
 - [ ] On-call escalation: severity-based routing, action rules, maintenance windows
 - [ ] Load test in the pipeline, cost reporting
@@ -142,7 +145,7 @@ devops-lab/
 │   ├── azure-setup.md       ← START HERE: one-time Azure account bootstrap
 │   ├── conventions.md       Naming, tagging, branching, environments
 │   └── adr/                 Architecture decision records
-├── infra/                   All Bicep IaC
+├── iac/                   All Bicep IaC
 │   ├── main.bicep           Subscription-scope entry point
 │   ├── modules/             One module per resource family
 │   └── params/              Per-environment .bicepparam files

@@ -1,0 +1,70 @@
+# Working agreement
+
+This repo exists so Pedro can **learn Azure and IaC**. He is experienced in software architecture
+and new to cloud and Bicep. The deliverable is his understanding, not working code. Optimise for
+that, never for your throughput.
+
+## Hard rules
+
+1. **Ask before deciding.** Any choice with more than one defensible answer is his. Give 2–4
+   options, the trade-offs, and a recommendation clearly labelled as a recommendation. This includes
+   choices that feel minor: SKUs, API versions, property values, file names, module boundaries,
+   commit granularity, naming.
+2. **Never commit or push.** Make file changes and say what changed. He commits. If you think work
+   should be committed, ask.
+3. **Never deploy.** `az bicep build` and `az deployment sub what-if` change nothing and are fine.
+   `az deployment sub create`, and anything that creates or mutates an Azure resource, an Entra
+   object, or a GitHub setting, requires an explicit request each time.
+4. **No unrequested extras.** Do not add properties, parameters, outputs, tags, files, or resources
+   that were not agreed. If something looks missing, ask — do not add it and mention it afterwards.
+5. **Report what you actually did.** Not a summary of the outcome — the specific changes. If you ran
+   `sed` across three files, show the wording that changed.
+6. **Docs record decisions, they don't make them.** `README.md` and `docs/prd/` capture earlier
+   choices. When something conflicts, surface it and ask whether to change the code or the doc.
+7. **Verify before asserting.** Especially "tier X has feature Y" claims. A wrong one here
+   propagated into three documents.
+
+## Code style
+
+Simple and boring. He should be able to read any line and know what it does.
+
+- Literals over computed values. A hardcoded name beats a derived one.
+- No lookup maps, `uniqueString()`, safe-dereference (`[?]`), or ternaries unless he asked for that
+  specific behaviour.
+- Never set a property to its own default value.
+- No outputs or parameters that nothing consumes.
+- A parameter must have more than one possible value. Otherwise it is a literal.
+- Comments explain *why*. Never restate the line below them.
+
+## The repo
+
+```
+iac/
+  main.bicep                    subscription scope: creates the RG, calls modules
+  subscription.dev.bicepparam   the dev environment's values
+  bicepconfig.json              linter config (security + dead code = errors)
+  modules/
+    observability.bicep         Log Analytics + Application Insights
+    sqlServer.bicep             SQL server + database + firewall rule
+    appService.bicep            App Service plan + Web App
+docs/
+  azure-setup.md                one-time account bootstrap (done)
+  prd/v0-foundations.md         v0 spec + milestone task list
+  adr/                          decision records
+```
+
+Nothing is deployed yet. Everything so far has been validated with `what-if` only.
+
+## Commands
+
+- `/add-resource <thing>` — guided interview for adding an Azure resource. Use it for infra work.
+
+## Context worth not re-deriving
+
+- Region is under discussion: currently `northeurope` in code; `spaincentral` is closer to Portugal
+  and was verified to have Flex Consumption and APIM.
+- GitHub OIDC is wired and working. Federated credentials exist for both the plain and the
+  **immutable** subject format (`repo:pedroabz@34903747/DEVOPS-LAB@1339815353:...`).
+- Deployment slots require **Standard (S1)**. Free and Basic have none.
+- Azure SQL serverless takes **30–60s to resume** from auto-pause; see `docs/adr/0001`.
+- Bicep has no float type — decimals need `json('0.5')`.

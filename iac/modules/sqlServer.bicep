@@ -15,6 +15,12 @@ param sqlEntraAdminObjectId string
 @description('Name of the database.')
 param databaseName string
 
+@description('Public IP allowed to reach the server, so you can connect from VS Code.')
+param clientIpAddress string
+
+@description('Resource ID of the subnet the Web App runs in.')
+param appSubnetId string
+
 
 resource sqlServer 'Microsoft.Sql/servers@2025-01-01' = {
   name: sqlServerName
@@ -36,15 +42,29 @@ resource sqlServer 'Microsoft.Sql/servers@2025-01-01' = {
   }
 }
 
-// Allow other Azure services (the Web App, and later the Function App) to reach this server.
-// The 0.0.0.0-0.0.0.0 range is a special case: it does NOT mean "the whole internet", it means
-// "requests originating from inside Azure". Replaced by private endpoints in v4.
-resource allowAzureServices 'Microsoft.Sql/servers/firewallRules@2025-01-01' = {
+// The only public entry point. Your ISP will change this address eventually; when SQL starts
+// refusing you, the error names the new one.
+resource allowLaptop 'Microsoft.Sql/servers/firewallRules@2025-01-01' = {
   parent: sqlServer
-  name: 'AllowAllWindowsAzureIps'
+  name: 'my-laptop'
   properties: {
-    startIpAddress: '0.0.0.0'
-    endIpAddress: '0.0.0.0'
+    startIpAddress: clientIpAddress
+    endIpAddress: clientIpAddress
+  }
+}
+
+// How the Web App gets in. Matches on the subnet rather than an IP, so it survives scaling and
+// tier changes.
+//
+// ignoreMissingVnetServiceEndpoint stays false on purpose: with it true, this rule deploys even
+// when the subnet has no Microsoft.Sql service endpoint, and you get a rule that reads correctly
+// and matches nothing.
+resource allowAppSubnet 'Microsoft.Sql/servers/virtualNetworkRules@2025-01-01' = {
+  parent: sqlServer
+  name: 'allow-app-subnet'
+  properties: {
+    virtualNetworkSubnetId: appSubnetId
+    ignoreMissingVnetServiceEndpoint: false
   }
 }
 

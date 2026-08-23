@@ -1,5 +1,5 @@
 {
-  // Linter configuration for all .bicep files under infra/.
+  // Linter configuration for all .bicep files under iac/.
   // Rule reference: https://learn.microsoft.com/azure/azure-resource-manager/bicep/linter
   "analyzers": {
     "core": {

@@ -1,5 +1,5 @@
 ---
-description: Add an Azure resource to infra/ through a guided interview — one decision at a time, no unilateral choices
+description: Add an Azure resource to iac/ through a guided interview — one decision at a time, no unilateral choices
 ---
 
 # Add an Azure resource
@@ -40,9 +40,9 @@ These override any default instinct you have. Violating them defeats the point o
 
 Before asking anything, read enough to ask intelligently. Do not report this back in detail.
 
-- `infra/main.bicep` — parameters, naming, which modules are wired
-- `infra/modules/` — existing modules and the conventions they follow
-- `infra/subscription.dev.bicepparam` — what is parameterised today
+- `iac/main.bicep` — parameters, naming, which modules are wired
+- `iac/modules/` — existing modules and the conventions they follow
+- `iac/subscription.dev.bicepparam` — what is parameterised today
 
 Then state, in **two or three sentences**, what you understand the request to be and what it will
 touch. Confirm before continuing.
