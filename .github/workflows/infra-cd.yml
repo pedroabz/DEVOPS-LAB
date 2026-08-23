@@ -1,0 +1,86 @@
+name: infra-cd
+
+# Deploys iac/ to the dev environment. This is the only thing that should create
+# Azure resources — scripts/deploy-dev.sh exists for local previews, not for shipping.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'iac/**'
+      - '.github/workflows/infra-cd.yml'
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+# Two subscription-scope deployments with the same name must never overlap. Queue
+# rather than cancel: a cancelled ARM deployment leaves resources half-created.
+concurrency:
+  group: infra-cd
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy infrastructure
+    runs-on: ubuntu-latest
+    environment: dev
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      # A stable name so the deployment history stays readable and the 800-deployment
+      # limit is never approached.
+      #
+      # Careful: a subscription-scope deployment's location is fixed at creation and
+      # keyed on this name. Changing AZURE_LOCATION with the name unchanged fails with
+      # InvalidDeploymentLocation until the old deployment record is deleted
+      # (`az deployment sub delete --name devopslab-dev` — history only, no resources).
+      - name: Deploy
+        env:
+          CLIENT_IP: ${{ vars.CLIENT_IP }} # read by readEnvironmentVariable() in the .bicepparam
+        run: |
+          az deployment sub create \
+            --location "${{ vars.AZURE_LOCATION }}" \
+            --name devopslab-dev \
+            --template-file iac/main.bicep \
+            --parameters iac/subscription.dev.bicepparam \
+            --output none
+          echo "Deployed."
+
+      - name: Show outputs
+        run: |
+          az deployment sub show --name devopslab-dev \
+            --query properties.outputs -o json
+
+      # Cheap guard against the two settings that silently cost money or silently
+      # break the network path. Both have bitten this project already.
+      - name: Assert the expensive mistakes did not happen
+        run: |
+          RG=$(az deployment sub show --name devopslab-dev \
+            --query properties.outputs.resourceGroupName.value -o tsv)
+
+          AUTOPAUSE=$(az sql db list -g "$RG" \
+            --server "$(az sql server list -g "$RG" --query '[0].name' -o tsv)" \
+            --query "[?name!='master'].autoPauseDelay | [0]" -o tsv)
+          echo "SQL autoPauseDelay: $AUTOPAUSE"
+          if [ "$AUTOPAUSE" = "-1" ]; then
+            echo "::error::Auto-pause is disabled. An always-on serverless database is ~EUR 170/month."
+            exit 1
+          fi
+
+          WEBAPP=$(az webapp list -g "$RG" --query '[0].name' -o tsv)
+          ROUTING=$(az resource show -g "$RG" -n "$WEBAPP" \
+            --resource-type Microsoft.Web/sites \
+            --query properties.outboundVnetRouting.applicationTraffic -o tsv)
+          echo "outboundVnetRouting.applicationTraffic: $ROUTING"
+          if [ "$ROUTING" != "true" ]; then
+            echo "::error::App traffic is not routed through the VNet, so the SQL virtual network rule will never match."
+            exit 1
+          fi

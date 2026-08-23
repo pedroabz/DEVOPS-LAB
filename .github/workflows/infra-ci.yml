@@ -1,0 +1,66 @@
+name: infra-ci
+
+# Previews infrastructure changes on a PR. NEVER deploys — that is infra-cd's job.
+
+on:
+  pull_request:
+    paths:
+      - 'iac/**'
+      - '.github/workflows/infra-ci.yml'
+
+permissions:
+  id-token: write # OIDC token for azure/login
+  contents: read
+  pull-requests: write # to post the what-if result as a comment
+
+# No `environment:` here on purpose. That would make the OIDC subject
+# repo:...:environment:dev; a PR run presents repo:...:pull_request, which is the
+# github-pr federated credential registered in azure-setup.md section 8.2.
+jobs:
+  validate:
+    name: Lint and what-if
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Fails the job on any linter error. iac/bicepconfig.json makes security and
+      # dead-code rules errors rather than warnings.
+      - name: Build and lint
+        run: az bicep build --file iac/main.bicep --stdout > /dev/null
+
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: what-if
+        id: whatif
+        env:
+          CLIENT_IP: ${{ vars.CLIENT_IP }}
+        run: |
+          set -o pipefail
+          az deployment sub what-if \
+            --location "${{ vars.AZURE_LOCATION }}" \
+            --name devopslab-dev \
+            --template-file iac/main.bicep \
+            --parameters iac/subscription.dev.bicepparam \
+            --result-format ResourceIdOnly 2>&1 | tee whatif.txt
+
+      - name: Comment on the PR
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          {
+            echo "### Infrastructure \`what-if\`"
+            echo
+            echo "> Modules whose parameters come from another module's output are"
+            echo "> short-circuited and do **not** appear below. Right now that hides"
+            echo "> \`sqlDeployment\` and \`appServiceDeployment\` entirely."
+            echo
+            echo '```'
+            head -c 60000 whatif.txt
+            echo '```'
+          } > comment.md
+          gh pr comment "${{ github.event.pull_request.number }}" --body-file comment.md
