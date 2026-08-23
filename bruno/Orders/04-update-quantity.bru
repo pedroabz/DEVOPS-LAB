@@ -1,0 +1,30 @@
+meta {
+  name: Update quantity
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{baseUrl}}/orders/{{orderId}}/quantity
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "quantity": 5
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.quantity: eq 5
+}
+
+docs {
+  Three outcomes worth trying:
+    200  quantity changed, Total recalculated
+    400  quantity 0 or negative
+    409  the order is in a state that refuses the change — confirm or ship it first,
+         then come back here and watch it fail
+}

@@ -1,0 +1,19 @@
+meta {
+  name: Ship order
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/orders/{{orderId}}/ship
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+}
+
+docs {
+  Confirmed -> Shipped. Shipping a Pending order returns 409.
+}

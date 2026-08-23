@@ -1,0 +1,16 @@
+meta {
+  name: Cancel order
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{baseUrl}}/orders/{{orderId}}/cancel
+  body: none
+  auth: none
+}
+
+docs {
+  Expect 409 if the order has already shipped. That is the interesting case —
+  run it after "Ship order" to see the domain refuse.
+}

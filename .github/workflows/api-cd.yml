@@ -1,0 +1,160 @@
+name: api-cd
+
+# Tests -> migrations -> deploy. Nothing here touches iac/ — infrastructure has its own
+# pipeline (PRD M7/M8). This one ships the application onto infrastructure that already exists.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - '.github/workflows/api-cd.yml'
+  workflow_dispatch:
+
+permissions:
+  id-token: write # mints the OIDC token for azure/login
+  contents: read
+
+# Two runs must never migrate the same database at once. Queue rather than cancel:
+# cancelling mid-migration leaves the schema in an unknown state.
+concurrency:
+  group: api-cd
+  cancel-in-progress: false
+
+env:
+  DOTNET_VERSION: '10.0.x'
+  # Duplicated from iac/main.bicep. Deliberate: reading them from deployment outputs
+  # would be DRYer but adds a lookup step and a failure mode for very little gain at
+  # this size. If you rename a resource, change it here too.
+  RESOURCE_GROUP: rg-devopslab-dev-spc
+  SQL_SERVER: sql-devopslab-dev-spc-pabz
+  SQL_DATABASE: sqldb-orders-dev
+  WEBAPP_NAME: app-devopslab-dev-spc-pabz
+
+jobs:
+  test:
+    name: Build and test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - run: dotnet restore
+
+      - run: dotnet build --no-restore --configuration Release
+
+      - run: dotnet test --no-build --configuration Release --logger trx --results-directory TestResults
+
+      - uses: actions/upload-artifact@v4
+        if: always() # test results are most useful when the run failed
+        with:
+          name: test-results
+          path: TestResults
+
+  migrate:
+    name: Apply migrations
+    needs: test
+    runs-on: ubuntu-latest
+    environment: dev
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      # The SQL firewall allows Pedro's home IP and the snet-app subnet. A GitHub-hosted
+      # runner is neither, so it opens a hole for itself and closes it again below.
+      - name: Sweep any firewall rules left behind by a killed run
+        run: |
+          az sql server firewall-rule list \
+            -g "$RESOURCE_GROUP" -s "$SQL_SERVER" \
+            --query "[?starts_with(name, 'gh-runner-')].name" -o tsv \
+          | while read -r stale; do
+              echo "Removing stale rule: $stale"
+              az sql server firewall-rule delete -g "$RESOURCE_GROUP" -s "$SQL_SERVER" -n "$stale"
+            done
+
+      - name: Open the firewall for this runner
+        id: firewall
+        run: |
+          RUNNER_IP=$(curl -s https://api.ipify.org)
+          RULE_NAME="gh-runner-${{ github.run_id }}"
+          echo "rule-name=$RULE_NAME" >> "$GITHUB_OUTPUT"
+          az sql server firewall-rule create \
+            -g "$RESOURCE_GROUP" -s "$SQL_SERVER" -n "$RULE_NAME" \
+            --start-ip-address "$RUNNER_IP" --end-ip-address "$RUNNER_IP" --output none
+          echo "Opened $RULE_NAME for $RUNNER_IP"
+
+      # OrdersDbContextFactory reads this variable. No password: the runner authenticates
+      # as sp-devopslab-github-dev, which is a member of sg-devopslab-sql-admins.
+      - name: dotnet ef database update
+        env:
+          ORDERS_CONNECTION_STRING: >-
+            Server=tcp:${{ env.SQL_SERVER }}.database.windows.net,1433;
+            Database=${{ env.SQL_DATABASE }};
+            Authentication=Active Directory Default;
+            Encrypt=True;TrustServerCertificate=False;Connection Timeout=90;
+        run: |
+          dotnet tool install --global dotnet-ef --version 10.0.11
+          # First contact may hit a serverless auto-pause resume, which takes 30-60s and
+          # usually times out rather than waiting. One retry covers it.
+          dotnet ef database update --project src/infrastructure/DevOpsLab.Infrastructure \
+            || dotnet ef database update --project src/infrastructure/DevOpsLab.Infrastructure
+
+      - name: Close the firewall
+        if: always() # must run even when the migration failed
+        run: |
+          az sql server firewall-rule delete \
+            -g "$RESOURCE_GROUP" -s "$SQL_SERVER" \
+            -n "${{ steps.firewall.outputs.rule-name }}" --output none || true
+          echo "Removed ${{ steps.firewall.outputs.rule-name }}"
+
+  deploy:
+    name: Deploy to App Service
+    needs: migrate
+    runs-on: ubuntu-latest
+    environment: dev
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - run: dotnet publish src/api/DevOpsLab.Api --configuration Release --output publish
+
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ env.WEBAPP_NAME }}
+          package: publish
+
+      # Liveness runs no checks, so this proves the process started, not that SQL works.
+      # Readiness is deliberately not asserted here: the database may be resuming.
+      - name: Smoke test
+        run: |
+          for i in 1 2 3 4 5; do
+            CODE=$(curl -s -o /dev/null -w '%{http_code}' \
+              "https://${{ env.WEBAPP_NAME }}.azurewebsites.net/health/live")
+            echo "attempt $i: HTTP $CODE"
+            [ "$CODE" = "200" ] && exit 0
+            sleep 15
+          done
+          echo "Liveness never returned 200"
+          exit 1

@@ -1,0 +1,20 @@
+meta {
+  name: Confirm order
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/orders/{{orderId}}/confirm
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+}
+
+docs {
+  Pending -> Confirmed. Running it twice gives 409: the domain refuses the transition
+  and the endpoint turns InvalidOrderStateException into a Conflict.
+}

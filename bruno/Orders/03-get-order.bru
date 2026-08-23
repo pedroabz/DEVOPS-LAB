@@ -1,0 +1,19 @@
+meta {
+  name: Get order by id
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/orders/{{orderId}}
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+}
+
+docs {
+  404 if the id is unknown. Uses {{orderId}} captured by "Create order".
+}

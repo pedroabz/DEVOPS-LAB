@@ -1,0 +1,38 @@
+meta {
+  name: Create order
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/orders
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "customerName": "Ana Silva",
+    "product": "Mechanical keyboard",
+    "quantity": 2,
+    "unitPrice": 89.90
+  }
+}
+
+vars:post-response {
+  orderId: res.body.id
+}
+
+assert {
+  res.status: eq 201
+  res.body.status: eq Pending
+}
+
+docs {
+  Creates an order and stores its id in {{orderId}}, which every other request here uses.
+  Run this first.
+
+  Validation lives in the DTO and again in the domain. An ArgumentException from the
+  domain is translated to a 400 ValidationProblem rather than surfacing as a 500 —
+  try quantity 0 or an empty customerName to see it.
+}

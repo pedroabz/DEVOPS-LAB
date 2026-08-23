@@ -1,0 +1,18 @@
+meta {
+  name: Readiness
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/health/ready
+  body: none
+  auth: none
+}
+
+docs {
+  Also proves SQL is reachable.
+
+  Expect this to take 30-60 seconds, or time out, if the database has auto-paused
+  after an hour idle. That is the serverless resume, not a fault. Retry.
+}

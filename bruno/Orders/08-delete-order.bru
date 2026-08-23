@@ -1,0 +1,19 @@
+meta {
+  name: Delete order
+  type: http
+  seq: 8
+}
+
+delete {
+  url: {{baseUrl}}/orders/{{orderId}}
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 204
+}
+
+docs {
+  204 on success, 404 if already gone. Run it twice.
+}

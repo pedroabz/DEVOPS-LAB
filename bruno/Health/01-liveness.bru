@@ -1,0 +1,17 @@
+meta {
+  name: Liveness
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/health/live
+  body: none
+  auth: none
+}
+
+docs {
+  Runs no checks on purpose. Answers only "is this process able to serve traffic".
+  App Service restarts instances that fail its health check, so touching the
+  serverless database here would turn every auto-pause into a restart loop.
+}
