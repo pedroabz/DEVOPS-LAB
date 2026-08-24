@@ -75,13 +75,13 @@ GO
 -- the identity's object ID directly — no Graph lookup involved.
 --
 -- The SID below is the Web App's managed identity principal ID
---   2d9eb90d-d77a-49ea-a1cb-d8e1af55354c
+--   350c46d0-b87b-44d2-aaac-d24d87c3de9a
 -- converted to the little-endian byte order SQL expects. If you ever recreate the Web
 -- App the identity changes, and this value goes stale.
 --
 -- IF NOT EXISTS (SELECT 1 FROM sys.database_principals WHERE name = 'app-devopslab-dev-spc-pabz')
 -- BEGIN
 --     CREATE USER [app-devopslab-dev-spc-pabz]
---         WITH SID = 0x0DB99E2D7AD7EA49A1CBD8E1AF55354C, TYPE = E;
+--         WITH SID = 0xD0460C357BB8D244AAACD24D87C3DE9A, TYPE = E;
 -- END
 -- GO
