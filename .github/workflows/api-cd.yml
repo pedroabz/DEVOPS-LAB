@@ -171,7 +171,7 @@ jobs:
           while [ $SECONDS -lt $DEADLINE ]; do
             ATTEMPT=$((ATTEMPT + 1))
             CODE=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 \
-              "https://${{ env.WEBAPP_NAME }}.azurewebsites.net/health/live" || echo "000")
+              "https://${{ env.WEBAPP_NAME }}.azurewebsites.net/health/live") || true
             echo "attempt $ATTEMPT ($((SECONDS))s): HTTP $CODE"
             case "$CODE" in
               200) echo "Live."; exit 0 ;;
