@@ -105,23 +105,14 @@ resource sqlDatabase 'Microsoft.Sql/servers/databases@2025-01-01' = {
     // Minutes of inactivity before compute is deallocated. 60 is the minimum Azure permits.
     autoPauseDelay: 60
 
-    // Azure SQL's free offer: 100,000 vCore-seconds of compute and 32 GB of storage per month,
-    // per database, up to 10 databases per subscription. Renews on the 1st.
+    // The free offer (100,000 vCore-seconds/month) is NOT available here. Setting useFreeLimit
+    // fails with "Provisioning of free limit database is not supported for provided service level
+    // objective or region" — verified on a brand new database, so it is the REGION, not a
+    // restriction on converting an existing one.
     //
-    // 100,000 vCore-seconds = 27.8 vCore-hours, so at minCapacity 0.5 that is ~55 hours of AWAKE
-    // database per month. Measured: a 5-hour session costs ~1.17 EUR without this, and 0 with it.
-    useFreeLimit: true
-
-    // AutoPause = when the monthly allowance runs out, the database becomes INACCESSIBLE until the
-    // 1st of next month. No bill, no surprise — the lab simply stops.
-    //
-    // ⚠️ The alternative, 'BillOverUsage', keeps serving and charges normal rates. It is a ONE-WAY
-    //    DOOR: once set you cannot return to AutoPause.
-    //
-    // This does not make auto-pause optional. A database that never pauses burns the whole month's
-    // allowance in about 2.3 days — the free limit only changes the punishment from money to
-    // downtime.
-    freeLimitExhaustionBehavior: 'AutoPause'
+    // Getting it would mean moving SQL to a region that offers it, which would split the database
+    // from the app and the VNet. Not worth it: auto-pause already takes an idle database to
+    // storage-only cost.
 
     maxSizeBytes: 2147483648 // 2 GiB. The free offer allows up to 32 GB if this ever needs raising.
     collation: 'SQL_Latin1_General_CP1_CI_AS'

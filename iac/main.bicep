@@ -50,7 +50,7 @@ var names = {
   vnet: 'vnet-${suffix}'
   webApp: 'app-${suffix}-${owner}'
   bffWebApp: 'app-bff-${suffix}-${owner}'
-  staticWebApp: 'stapp-${suffix}'
+  staticWebApp: 'stapp-devopslab-${envName}'
 }
 
 // ---------------------------------------------------------------------------

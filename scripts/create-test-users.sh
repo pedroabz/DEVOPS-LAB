@@ -35,7 +35,7 @@ create_user () {
   local upn="${nickname}@${DOMAIN}"
 
   if az ad user show --id "$upn" >/dev/null 2>&1; then
-    echo "  exists: $upn"
+    echo "  exists: $upn" >&2
   else
     # --force-change-password-next-sign-in defaults to true, and a forced password change
     # inside an MSAL popup is a miserable first experience for a demo.
@@ -45,7 +45,7 @@ create_user () {
       --password "$password" \
       --force-change-password-next-sign-in false \
       --output none
-    echo "  created: $upn"
+    echo "  created: $upn" >&2
   fi
 
   az ad user show --id "$upn" --query id -o tsv

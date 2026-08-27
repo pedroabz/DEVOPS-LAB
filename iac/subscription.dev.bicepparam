@@ -15,14 +15,15 @@ param clientIpAddress = readEnvironmentVariable('CLIENT_IP')
 
 // --- v2: identity, frontend, BFF ---
 
-// Static Web Apps is unavailable in spaincentral. westeurope is the closest supported region;
-// eastus2 is the fallback if this subscription is blocked there as it was for SQL.
-param staticWebAppLocation = 'westeurope'
+// Static Web Apps is unavailable in spaincentral. westeurope was the closest supported region,
+// but this subscription is blocked there — RequestDisallowedByAzure, exactly as it was for SQL.
+// eastus2 is the fallback. The SPA is static files behind a global CDN, so origin region barely
+// affects latency.
+param staticWebAppLocation = 'eastus2'
 
 // Object IDs are identifiers, not secrets — the SQL admin group's is already committed above.
 param adminUserObjectId = 'afddd92f-091f-497b-9fdc-50b35a214aba'
 
-// TODO: replace after running scripts/create-test-users.sh, which prints both object IDs.
-// Deployment will fail with an invalid-principal error until these are real.
-param readerTestUserObjectId = '00000000-0000-0000-0000-000000000000'
-param adminTestUserObjectId = '00000000-0000-0000-0000-000000000000'
+// Created by scripts/create-test-users.sh. ana.reader@ and miguel.admin@ respectively.
+param readerTestUserObjectId = '76e50907-3754-4918-9e43-ef9aa8978f76'
+param adminTestUserObjectId = '84e1615b-fc30-43f4-b21b-e3ce8fd2d666'
