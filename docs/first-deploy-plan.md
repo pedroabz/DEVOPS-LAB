@@ -167,7 +167,7 @@ not a fault. Try again.
 
 - [ ] `dotnet tool install --global dotnet-ef` (once, if you don't have it)
 
-- [ ] Point local config at Azure. In `src/api/DevOpsLab.Api/appsettings.Development.json`, replace
+- [ ] Point local config at Azure. In `src/orders-api/DevOpsLab.Api/appsettings.Development.json`, replace
       the `localhost` connection string with:
       ```
       Server=tcp:sql-devopslab-dev-spc-pabz.database.windows.net,1433;Database=sqldb-orders-dev;Authentication=Active Directory Default;Encrypt=True;Connection Timeout=90;
@@ -176,8 +176,8 @@ not a fault. Try again.
 
 - [ ] ```bash
       dotnet ef database update \
-        --project src/infrastructure/DevOpsLab.Infrastructure \
-        --startup-project src/api/DevOpsLab.Api
+        --project src/orders-api/DevOpsLab.Infrastructure \
+        --startup-project src/orders-api/DevOpsLab.Api
       ```
 
 - [ ] Confirm the tables exist — re-run a query in VS Code.
@@ -187,7 +187,7 @@ not a fault. Try again.
 ## 7. Run the app locally against Azure
 
 - [ ] ```bash
-      dotnet run --project src/api/DevOpsLab.Api
+      dotnet run --project src/orders-api/DevOpsLab.Api
       ```
 - [ ] `curl http://localhost:5xxx/health/live` → healthy immediately
 - [ ] `curl http://localhost:5xxx/health/ready` → healthy, but **slow on the first call** if the

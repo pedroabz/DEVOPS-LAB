@@ -1,0 +1,97 @@
+name: bff-cd
+
+# Test -> deploy. No migrate job: the BFF has no database. It speaks HTTP to the Orders API and
+# authenticates with its own managed identity, so it needs nothing through the SQL firewall.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/bff/**'
+      - 'tests/DevOpsLab.Bff.Tests/**'
+      - '.github/workflows/bff-cd.yml'
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: bff-cd
+  cancel-in-progress: false
+
+env:
+  DOTNET_VERSION: '10.0.x'
+  # Duplicated from iac/main.bicep, same trade-off as api-cd.yml: a lookup would be DRYer but
+  # adds a step and a failure mode. Rename the resource, change it here too.
+  WEBAPP_NAME: app-bff-devopslab-dev-spc-pabz
+
+jobs:
+  test:
+    name: Build and test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - run: dotnet restore src/bff/DevOpsLab.Bff
+
+      - run: dotnet build src/bff/DevOpsLab.Bff --no-restore --configuration Release
+
+      - run: dotnet test tests/DevOpsLab.Bff.Tests --configuration Release --logger trx --results-directory TestResults
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bff-test-results
+          path: TestResults
+
+  deploy:
+    name: Deploy to App Service
+    needs: test
+    runs-on: ubuntu-latest
+    environment: dev
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - run: dotnet publish src/bff/DevOpsLab.Bff --configuration Release --output publish
+
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ env.WEBAPP_NAME }}
+          package: publish
+
+      # Same 404/503-tolerant loop as api-cd: a cold App Service serves 404 from its default
+      # handler until the app is warm, which measured over 90s on a freshly created plan.
+      # The BFF shares that plan with the API, so it is no faster.
+      - name: Smoke test
+        timeout-minutes: 6
+        run: |
+          DEADLINE=$((SECONDS + 300))
+          ATTEMPT=0
+          while [ $SECONDS -lt $DEADLINE ]; do
+            ATTEMPT=$((ATTEMPT + 1))
+            CODE=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 \
+              "https://${{ env.WEBAPP_NAME }}.azurewebsites.net/health/live" || echo "000")
+            echo "attempt $ATTEMPT ($((SECONDS))s): HTTP $CODE"
+            case "$CODE" in
+              200) echo "Live."; exit 0 ;;
+              404|503|000) sleep 10 ;;
+              *) echo "::error::Unexpected status $CODE"; exit 1 ;;
+            esac
+          done
+          echo "::error::Liveness never returned 200 within 5 minutes"
+          exit 1

@@ -6,9 +6,14 @@ name: api-cd
 on:
   push:
     branches: [main]
+    # Explicit rather than 'src/**': the BFF and the SPA now live under src/ too, and a CSS
+    # tweak has no business running database migrations or opening a SQL firewall hole.
+    # `paths` and `paths-ignore` cannot be combined, so the list has to be enumerated.
+    # Trade-off: a NEW project under src/ will not trigger this until someone adds it here.
     paths:
-      - 'src/**'
-      - 'tests/**'
+      - 'src/orders-api/**'
+      - 'src/shared/**'
+      - 'tests/DevOpsLab.Api.Tests/**'
       - '.github/workflows/api-cd.yml'
   workflow_dispatch:
 
@@ -113,9 +118,9 @@ jobs:
           # --no-build so this step cannot fail for compile reasons; the build above owns
           # that. The only retry-worthy failure left is a serverless auto-pause resume,
           # which takes 30-60s and usually times out rather than waiting.
-          dotnet ef database update --project src/infrastructure/DevOpsLab.Infrastructure \
+          dotnet ef database update --project src/orders-api/DevOpsLab.Infrastructure \
               --no-build --configuration Release \
-            || dotnet ef database update --project src/infrastructure/DevOpsLab.Infrastructure \
+            || dotnet ef database update --project src/orders-api/DevOpsLab.Infrastructure \
               --no-build --configuration Release
 
       - name: Close the firewall
@@ -138,7 +143,7 @@ jobs:
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
-      - run: dotnet publish src/api/DevOpsLab.Api --configuration Release --output publish
+      - run: dotnet publish src/orders-api/DevOpsLab.Api --configuration Release --output publish
 
       - uses: azure/login@v2
         with:

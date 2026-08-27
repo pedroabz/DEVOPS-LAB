@@ -1,0 +1,20 @@
+auth {
+  mode: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+docs {
+  The Orders API requires a token since v2. Health endpoints stay anonymous.
+
+  Get a token:
+      export accessToken=$(./scripts/get-admin-token.sh)
+
+  ...then paste it into the environment's accessToken secret variable. It is a secret var, so
+  it is held in Bruno's local store and never written into a file in this repo.
+
+  That token carries the Orders.Admin.Direct app role, which only an administrator holds. An
+  ordinary user has no way to call this API directly — they go through the BFF.
+}

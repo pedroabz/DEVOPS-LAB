@@ -16,6 +16,19 @@ param sqlEntraAdminName string
 @description('Object ID of the Entra group that administers SQL.')
 param sqlEntraAdminObjectId string
 
+@description('''Azure region for the Static Web App. Separate from `location` because Static Web
+Apps is only available in five regions and spaincentral is not one of them.''')
+param staticWebAppLocation string
+
+@description('Object ID of the admin user who keeps direct access to the Orders API.')
+param adminUserObjectId string
+
+@description('Object ID of the test user granted Orders.Reader.')
+param readerTestUserObjectId string
+
+@description('Object ID of the test user granted Orders.Admin.')
+param adminTestUserObjectId string
+
 @description('Your public IP, so SQL lets you connect from VS Code. Supplied via the CLIENT_IP environment variable — see .env.example.')
 param clientIpAddress string
 
@@ -36,6 +49,8 @@ var names = {
   appServicePlan: 'asp-${suffix}'
   vnet: 'vnet-${suffix}'
   webApp: 'app-${suffix}-${owner}'
+  bffWebApp: 'app-bff-${suffix}-${owner}'
+  staticWebApp: 'stapp-${suffix}'
 }
 
 // ---------------------------------------------------------------------------
@@ -90,6 +105,57 @@ module appService './modules/appService.bicep' = {
     appSubnetId: network.outputs.appSubnetId
     applicationInsightsConnectionString: OrderObservability.outputs.applicationInsightsConnectionString
     sqlConnectionString: sql.outputs.connectionString
+    tenantId: tenant().tenantId
+    ordersApiClientId: entraApps.outputs.ordersApiAppId
+  }
+}
+
+// The SPA's redirect URI needs this hostname, and the hostname is generated — hence Static Web
+// App before the app registrations.
+module staticWebApp './modules/staticWebApp.bicep' = {
+  name: 'staticWebAppDeployment'
+  scope: rg
+  params: {
+    staticWebAppName: names.staticWebApp
+    location: staticWebAppLocation
+  }
+}
+
+// No `scope:` — Entra objects are tenant-scoped, not resource-group scoped.
+module entraApps './modules/entraApps.bicep' = {
+  name: 'entraAppsDeployment'
+  params: {
+    tenantId: tenant().tenantId
+    staticWebAppHostname: staticWebApp.outputs.defaultHostname
+  }
+}
+
+module bffAppService './modules/bffAppService.bicep' = {
+  name: 'bffAppServiceDeployment'
+  scope: rg
+  params: {
+    location: location
+    bffWebAppName: names.bffWebApp
+    appServicePlanId: appService.outputs.appServicePlanId
+    tenantId: tenant().tenantId
+    bffClientId: entraApps.outputs.bffAppId
+    ordersApiBaseUrl: 'https://${appService.outputs.webAppHostname}'
+    ordersApiScope: entraApps.outputs.ordersApiScope
+    allowedOrigin: 'https://${staticWebApp.outputs.defaultHostname}'
+    applicationInsightsConnectionString: OrderObservability.outputs.applicationInsightsConnectionString
+  }
+}
+
+// Last, because it needs the BFF's managed identity to exist.
+module entraAssignments './modules/entraAssignments.bicep' = {
+  name: 'entraAssignmentsDeployment'
+  params: {
+    ordersApiServicePrincipalId: entraApps.outputs.ordersApiServicePrincipalId
+    bffServicePrincipalId: entraApps.outputs.bffServicePrincipalId
+    bffManagedIdentityPrincipalId: bffAppService.outputs.principalId
+    adminUserObjectId: adminUserObjectId
+    readerTestUserObjectId: readerTestUserObjectId
+    adminTestUserObjectId: adminTestUserObjectId
   }
 }
 
@@ -105,3 +171,21 @@ output sqlServerFqdn string = sql.outputs.sqlServerFqdn
 
 @description('Default hostname of the Web App.')
 output webAppHostname string = appService.outputs.webAppHostname
+
+@description('Client ID of the SPA app registration. Baked into the frontend build by spa-cd.yml.')
+output spaClientId string = entraApps.outputs.spaAppId
+
+@description('Scope the SPA requests to call the BFF.')
+output bffScope string = entraApps.outputs.bffScope
+
+@description('Hostname of the BFF, which the SPA calls.')
+output bffHostname string = bffAppService.outputs.defaultHostName
+
+@description('Hostname of the Static Web App.')
+output staticWebAppHostname string = staticWebApp.outputs.defaultHostname
+
+@description('Name of the Static Web App, so spa-cd.yml can fetch its deployment token via OIDC instead of storing one as a repo secret.')
+output staticWebAppName string = staticWebApp.outputs.name
+
+@description('Client ID of the Orders API app registration.')
+output ordersApiClientId string = entraApps.outputs.ordersApiAppId

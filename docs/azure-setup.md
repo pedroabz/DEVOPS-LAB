@@ -634,11 +634,55 @@ az ad group member add --group "$SQL_ADMIN_GROUP_ID" \
 echo "SQL admin group object id: $SQL_ADMIN_GROUP_ID"   # becomes a Bicep parameter
 ```
 
-### 11.2 Entra ID app registrations for OAuth (v3)
+### 11.2 Graph permissions for the deployment identity (v2)
 
-v3 needs two more app registrations — one exposing the API's scopes and app roles, one for the
-client. Both are created with `az ad app create` in the same way as §8.1. They will be documented in
-`docs/adr/` when we get there.
+v2 declares its Entra app registrations in Bicep, via the Microsoft Graph extension. That means
+`sp-devopslab-github-dev` has to be allowed to create them — and by default it holds **no Microsoft
+Graph permissions at all**, only the Azure RBAC roles from §8.3.
+
+It also **cannot grant them to itself**: that is precisely what `AppRoleAssignment.ReadWrite.All`
+is. So this is a bootstrap step you run once, from your own `az login` session, as Global
+Administrator.
+
+```bash
+GRAPH_APP_ID=00000003-0000-0000-c000-000000000000   # Microsoft Graph, same in every tenant
+GRAPH_SP=$(az ad sp show --id "$GRAPH_APP_ID" --query id -o tsv)
+DEPLOYER_SP=11257766-1470-44ed-aaf9-729bdefd5b5b
+
+for perm in Application.ReadWrite.OwnedBy AppRoleAssignment.ReadWrite.All; do
+  ROLE=$(az ad sp show --id "$GRAPH_APP_ID" \
+    --query "appRoles[?value=='$perm'].id | [0]" -o tsv)
+  az rest --method POST \
+    --url "https://graph.microsoft.com/v1.0/servicePrincipals/$DEPLOYER_SP/appRoleAssignments" \
+    --body "{\"principalId\":\"$DEPLOYER_SP\",\"resourceId\":\"$GRAPH_SP\",\"appRoleId\":\"$ROLE\"}"
+done
+```
+
+Why these two, and not a directory role:
+
+- **`Application.ReadWrite.OwnedBy`** lets it manage only applications it created. The broader
+  alternative, the **Application Administrator** directory role, can manage every app registration
+  in the tenant.
+- **`AppRoleAssignment.ReadWrite.All`** is needed to create app role assignments. It is broad by
+  nature — it can grant any app role to anything — and there is no narrower permission that works.
+
+Verify:
+
+```bash
+az rest --method get \
+  --url "https://graph.microsoft.com/v1.0/servicePrincipals/$DEPLOYER_SP/appRoleAssignments" \
+  --query "value[].appRoleId" -o tsv
+```
+
+> **You may need a third.** The `appRoleAssignedTo` reference also lists `Application.Read.All` as a
+> least-privileged deployment permission. If `entraAssignmentsDeployment` fails with
+> `Authorization_RequestDenied`, add it the same way. Treat that as expected rather than as a fault.
+
+### 11.2b App registrations themselves
+
+All three — SPA, BFF and Orders API — are declared in `iac/modules/entraApps.bicep` and deployed by
+`infra-cd`. Nothing is created with `az ad app create`. See
+[`docs/prd/v2-identity-frontend-bff.md`](prd/v2-identity-frontend-bff.md).
 
 ### 11.3 API Management SKU choice (v3)
 

@@ -1,4 +1,17 @@
 {
+  // The Microsoft Graph extension lets Entra objects (app registrations, service
+  // principals, role assignments) be declared as Bicep alongside Azure resources.
+  // It is in PREVIEW: breaking changes are permitted and it is not covered by support.
+  //
+  // Consequence worth knowing: `what-if` does not evaluate extensible resources AT ALL,
+  // so every Microsoft.Graph/* resource is invisible in a deployment preview.
+  "experimentalFeaturesEnabled": {
+    "extensibility": true
+  },
+  "extensions": {
+    "microsoftGraphV1": "br:mcr.microsoft.com/bicep/extensions/microsoftgraph/v1.0:1.0.0"
+  },
+
   // Linter configuration for all .bicep files under iac/.
   // Rule reference: https://learn.microsoft.com/azure/azure-resource-manager/bicep/linter
   "analyzers": {

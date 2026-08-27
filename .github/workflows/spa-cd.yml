@@ -1,0 +1,82 @@
+name: spa-cd
+
+# Builds the React SPA and deploys it to Static Web Apps.
+#
+# The SPA is configured entirely from Bicep deployment outputs rather than from repo variables,
+# so client IDs and hostnames cannot drift from what was actually deployed. The consequence is
+# that infra-cd MUST have run at least once — the first ever run of this workflow fails
+# otherwise, with an empty-output error rather than anything more helpful.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/web/**'
+      - '.github/workflows/spa-cd.yml'
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: spa-cd
+  cancel-in-progress: false
+
+env:
+  SPA_PATH: src/web/orders-spa
+
+jobs:
+  deploy:
+    name: Build and deploy
+    runs-on: ubuntu-latest
+    environment: dev
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Read configuration from the infrastructure deployment
+        id: infra
+        run: |
+          OUTPUTS=$(az deployment sub show --name devopslab-dev --query properties.outputs -o json)
+          for key in spaClientId bffScope bffHostname staticWebAppName resourceGroupName; do
+            value=$(echo "$OUTPUTS" | python3 -c "import sys,json;print(json.load(sys.stdin)['$key']['value'])")
+            echo "$key=$value" >> "$GITHUB_OUTPUT"
+          done
+          echo "$OUTPUTS" | python3 -c "import sys,json;d=json.load(sys.stdin);[print(f'  {k} = {v[\"value\"]}') for k,v in d.items()]"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: ${{ env.SPA_PATH }}/package-lock.json
+
+      # Vite inlines VITE_* variables at build time, so configuration is baked into the bundle
+      # rather than fetched at runtime. That is fine here: none of these are secrets — a public
+      # client ID and two hostnames.
+      - name: Build
+        working-directory: ${{ env.SPA_PATH }}
+        env:
+          VITE_ENTRA_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+          VITE_SPA_CLIENT_ID: ${{ steps.infra.outputs.spaClientId }}
+          VITE_BFF_SCOPE: ${{ steps.infra.outputs.bffScope }}
+          VITE_BFF_BASE_URL: https://${{ steps.infra.outputs.bffHostname }}
+        run: |
+          npm ci
+          npm run build
+
+      # The deployment token is fetched with the OIDC session rather than stored as a repo
+      # secret, which keeps the "no secrets at rest" property the rest of this repo has.
+      - name: Deploy
+        run: |
+          TOKEN=$(az staticwebapp secrets list \
+            --name "${{ steps.infra.outputs.staticWebAppName }}" \
+            --resource-group "${{ steps.infra.outputs.resourceGroupName }}" \
+            --query properties.apiKey -o tsv)
+          npx --yes @azure/static-web-apps-cli deploy "${{ env.SPA_PATH }}/dist" \
+            --deployment-token "$TOKEN" --env production

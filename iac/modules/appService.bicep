@@ -15,6 +15,12 @@ param applicationInsightsConnectionString string
 @description('Resource ID of the subnet to route outbound traffic through.')
 param appSubnetId string
 
+@description('Client ID of the Orders API app registration. With v2 tokens this GUID is the audience the API validates, and it is what makes the API reject the SPA token — whose audience is the BFF.')
+param ordersApiClientId string
+
+@description('Entra tenant ID, used to build the token authority.')
+param tenantId string
+
 @description('SQL connection string using Entra managed-identity auth. Contains no password.')
 param sqlConnectionString string
 
@@ -75,6 +81,22 @@ resource webApp 'Microsoft.Web/sites@2024-11-01' = {
           name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
           value: applicationInsightsConnectionString
         }
+        {
+          // Distinguishes this service from the BFF inside the shared App Insights component,
+          // so both appear as separate nodes on the application map while their traces still join
+          // into one operation_id.
+          name: 'OTEL_SERVICE_NAME'
+          value: 'orders-api'
+        }
+        {
+          // App Service on Linux maps __ to : , so this arrives as AzureAd:TenantId.
+          name: 'AzureAd__TenantId'
+          value: tenantId
+        }
+        {
+          name: 'AzureAd__ClientId'
+          value: ordersApiClientId
+        }
       ]
 
       connectionStrings: [
@@ -92,3 +114,6 @@ resource webApp 'Microsoft.Web/sites@2024-11-01' = {
 
 @description('Default hostname of the Web App. Used to confirm the site responds, per docs/prd/v0-foundations.md §4.')
 output webAppHostname string = webApp.properties.defaultHostName
+
+@description('Resource ID of the App Service plan, so the BFF can be hosted on it without paying for a second plan.')
+output appServicePlanId string = appServicePlan.id

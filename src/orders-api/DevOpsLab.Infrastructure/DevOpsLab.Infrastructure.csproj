@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
-    <ProjectReference Include="..\..\application\DevOpsLab.Application\DevOpsLab.Application.csproj" />
+    <ProjectReference Include="..\DevOpsLab.Application\DevOpsLab.Application.csproj" />
   </ItemGroup>
 
   <ItemGroup>

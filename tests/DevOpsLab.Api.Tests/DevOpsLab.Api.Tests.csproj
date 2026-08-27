@@ -21,8 +21,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\domain\DevOpsLab.Domain\DevOpsLab.Domain.csproj" />
-    <ProjectReference Include="..\..\src\application\DevOpsLab.Application\DevOpsLab.Application.csproj" />
+    <ProjectReference Include="..\..\src\orders-api\DevOpsLab.Domain\DevOpsLab.Domain.csproj" />
+    <ProjectReference Include="..\..\src\orders-api\DevOpsLab.Application\DevOpsLab.Application.csproj" />
+    <ProjectReference Include="..\..\src\orders-api\DevOpsLab.Api\DevOpsLab.Api.csproj" />
   </ItemGroup>
 
 </Project>

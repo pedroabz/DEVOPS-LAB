@@ -42,21 +42,33 @@ Simple and boring. He should be able to read any line and know what it does.
 iac/
   main.bicep                    subscription scope: creates the RG, calls modules
   subscription.dev.bicepparam   the dev environment's values
-  bicepconfig.json              linter config (security + dead code = errors)
+  bicepconfig.json              linter + Microsoft Graph extension (PREVIEW)
   modules/
     network.bicep               VNet + snet-app (delegated, Microsoft.Sql service endpoint)
-    observability.bicep         Log Analytics + Application Insights
+    observability.bicep         Log Analytics + Application Insights (SHARED by API and BFF)
     sqlServer.bicep             SQL server + database + firewall rule + VNet rule
-    appService.bicep            App Service plan + Web App (integrated into snet-app)
+    appService.bicep            App Service plan + Orders API web app
+    bffAppService.bicep         BFF web app, on the same plan
+    staticWebApp.bicep          SPA hosting. Free tier, and NOT in spaincentral
+    entraApps.bicep             3 app registrations + service principals (tenant-scoped)
+    entraAssignments.bicep      app role assignments (tenant-scoped)
+src/
+  orders-api/                   ONE deployable, four layers
+    DevOpsLab.Api / .Application / .Domain / .Infrastructure
+  bff/DevOpsLab.Bff             BFF. References nothing — speaks HTTP to the API
+  web/orders-spa                React + Vite + MSAL
+  functions/                    v3
 scripts/
   deploy-dev.sh                 sources .env, then what-if (default) or deploy
+  create-test-users.sh          the one part of v2 that cannot be Bicep
+  get-admin-token.sh            direct admin token for the Orders API
+  teardown-entra.sh             Entra objects survive `az group delete`
 docs/
-  azure-setup.md                one-time account bootstrap (done)
-  prd/v0-foundations.md         v0 spec + milestone task list
+  azure-setup.md                one-time account bootstrap
+  prd/                          v0 and v2 specs
   adr/                          decision records
   *-explained.md                plain-language topic explainers
-.env                            local values, gitignored (CLIENT_IP)
-.env.example                    committed template
+.env / .env.example             local values, gitignored
 ```
 
 Nothing is deployed yet. Everything so far has been validated with `what-if` only.

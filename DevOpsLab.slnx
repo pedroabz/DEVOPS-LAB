@@ -1,18 +1,16 @@
 <Solution>
   <Folder Name="/src/" />
-  <Folder Name="/src/api/">
-    <Project Path="src/api/DevOpsLab.Api/DevOpsLab.Api.csproj" />
+  <Folder Name="/src/orders-api/">
+    <Project Path="src/orders-api/DevOpsLab.Api/DevOpsLab.Api.csproj" />
+    <Project Path="src/orders-api/DevOpsLab.Application/DevOpsLab.Application.csproj" />
+    <Project Path="src/orders-api/DevOpsLab.Domain/DevOpsLab.Domain.csproj" />
+    <Project Path="src/orders-api/DevOpsLab.Infrastructure/DevOpsLab.Infrastructure.csproj" />
   </Folder>
-  <Folder Name="/src/application/">
-    <Project Path="src/application/DevOpsLab.Application/DevOpsLab.Application.csproj" />
-  </Folder>
-  <Folder Name="/src/domain/">
-    <Project Path="src/domain/DevOpsLab.Domain/DevOpsLab.Domain.csproj" />
-  </Folder>
-  <Folder Name="/src/infrastructure/">
-    <Project Path="src/infrastructure/DevOpsLab.Infrastructure/DevOpsLab.Infrastructure.csproj" />
+  <Folder Name="/src/bff/">
+    <Project Path="src/bff/DevOpsLab.Bff/DevOpsLab.Bff.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/DevOpsLab.Api.Tests/DevOpsLab.Api.Tests.csproj" />
+    <Project Path="tests/DevOpsLab.Bff.Tests/DevOpsLab.Bff.Tests.csproj" />
   </Folder>
 </Solution>

@@ -37,6 +37,15 @@ __azurite_db*__.json
 __blobstorage__/
 __queuestorage__/
 
+# ---------- Node / frontend ----------
+# package-lock.json is deliberately not here: it is the build's source of truth.
+# The `iac/**/*.json` rule above is scoped to iac/, so it never hides package.json.
+node_modules/
+dist/
+.vite/
+*.tsbuildinfo
+npm-debug.log*
+
 # ---------- Tooling / IDE ----------
 .vs/
 .idea/

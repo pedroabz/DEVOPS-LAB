@@ -15,7 +15,7 @@ One repository holds three kinds of thing, versioned and deployed together:
 
 1. **`iac/`** — every Azure resource, declared in Bicep. Nothing is created by hand in the portal
    after the initial account bootstrap. If it exists in Azure, it exists in this folder.
-2. **`src/api/`** — an ASP.NET Core Minimal API (.NET 10) doing CRUD against Azure SQL, instrumented
+2. **`src/orders-api/`** — an ASP.NET Core Minimal API (.NET 10) doing CRUD against Azure SQL, instrumented
    with Application Insights.
 3. **`src/functions/`** — Azure Functions that react to events. The first one drains a Service Bus
    queue and calls the API.
@@ -115,21 +115,27 @@ is Bicep like the rest — no dashboards clicked together in the portal.
 > Email is the v1.5 target because it needs no extra service. The Action Group abstraction means
 > adding Slack, Teams, SMS, or a webhook later is a change to one resource, not to every rule.
 
-### v2 — Event-driven
+### v2 — Identity, frontend & a BFF — [PRD](docs/prd/v2-identity-frontend-bff.md)
+- [ ] Entra app registrations declared in **Bicep** via the Microsoft Graph extension
+- [ ] React SPA on **Static Web Apps** (free tier) — one form, user signs in with Entra ID
+- [ ] **BFF** on the existing App Service plan, enforcing per-user RBAC (`Orders.Reader` / `Orders.Admin`)
+- [ ] BFF calls the API with **its own token** via managed identity — the user's token is never forwarded
+- [ ] API locked to the BFF, plus a direct admin route for you
+- [ ] Two test users, to prove Reader and Admin get different answers
+
+### v3 — Event-driven
 - [ ] Service Bus namespace + `order-events` queue + dead-letter handling
 - [ ] `OrderIngestor` Function (Flex Consumption) → calls the API
 - [ ] Trace correlation across the queue boundary
 - [ ] `functions-ci` workflow
 
-### v3 — Security & the front door
-- [ ] Entra ID app registrations, OAuth 2.0 client credentials + auth code flows
-- [ ] **Key Vault**, *if* the OAuth flow needs a client secret — everything before this point
-      uses managed identity, so there may be nothing to store
-- [ ] **RBAC** in the API: scopes and app roles mapped to endpoint policies
-- [ ] **API Management** in front of the API: JWT validation, rate limiting, products, versioning
+### v4 — API Management
+- [ ] **APIM in front of the API** — above both callers, the BFF and the Functions
+- [ ] JWT validation, rate limiting, products, versioning
 - [ ] API surface locked to APIM only
+- [ ] **Key Vault**, *if* anything by then actually holds a secret
 
-### v4 — Production hardening _(stretch)_
+### v5 — Production hardening _(stretch)_
 - [ ] `prod` environment + promotion pipeline with manual approval
 - [ ] Private endpoints (SQL public access off entirely) + the VPN/jump-box access it forces
 - [ ] Availability tests (synthetic monitoring) feeding the v1.5 alerts
