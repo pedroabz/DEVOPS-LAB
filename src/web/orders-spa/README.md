@@ -59,5 +59,10 @@ A 403 from the BFF is rendered as visible text, not hidden. That is the point of
 - **`cacheLocation: 'sessionStorage'`** — per-tab, cleared when the tab closes. It is msal-browser's
   current default; it is set explicitly so a future change of that default cannot start persisting
   tokens in `localStorage`.
-- Tokens come from `acquireTokenSilent`, falling back to `acquireTokenPopup` only on
+- Tokens come from `acquireTokenSilent`, falling back to `acquireTokenRedirect` only on
   `InteractionRequiredAuthError`.
+- **Sign-in is the redirect flow, not the popup flow.** With `redirectUri` set to the app's own
+  origin, a popup lands on the application and boots a second copy of it — MSAL there refuses to
+  process the response, because it belongs to the opener, so the popup renders a signed-out app
+  with a Sign in button. Clicking that is a `loginPopup` from inside a popup, which MSAL rejects
+  with `block_nested_popups`. The redirect flow has no second window to get this wrong.

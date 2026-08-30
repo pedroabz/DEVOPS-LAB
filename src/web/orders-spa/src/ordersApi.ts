@@ -45,11 +45,13 @@ async function acquireBffToken(
     return result.accessToken
   } catch (error) {
     // Only InteractionRequiredAuthError means "the user can fix this by being asked" — missing
-    // consent, an expired session, an MFA prompt. Prompting on any other error would open a popup
-    // the user cannot resolve and would bury the real cause behind a second sign-in attempt.
+    // consent, an expired session, an MFA prompt. Prompting on any other error would send the user
+    // to Entra for something they cannot resolve there, and bury the real cause on the way.
     if (error instanceof InteractionRequiredAuthError) {
-      const result = await msal.acquireTokenPopup({ scopes: [bffScope], account })
-      return result.accessToken
+      // Unlike acquireTokenPopup this never returns a token: it navigates the whole page to Entra,
+      // and the token arrives on the way back in, through MsalProvider's handleRedirectPromise.
+      // Whatever called this function is discarded along with the page.
+      await msal.acquireTokenRedirect({ scopes: [bffScope], account })
     }
 
     throw error

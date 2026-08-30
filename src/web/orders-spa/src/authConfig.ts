@@ -1,4 +1,4 @@
-import type { Configuration, PopupRequest } from '@azure/msal-browser'
+import type { Configuration, RedirectRequest } from '@azure/msal-browser'
 
 /**
  * Fails the app at load time when a build-time variable is missing, rather than letting the
@@ -31,6 +31,10 @@ export const msalConfig: Configuration = {
 
     // The default is the full current URL, which would need every route registered as a reply URL
     // on the app registration. Pinning the origin keeps that list at one entry.
+    //
+    // This is the app's own URL, which is correct for the redirect flow — the browser comes back
+    // here carrying the code and MsalProvider's handleRedirectPromise consumes it. It is NOT safe
+    // for the popup flow: there the popup would land on the app and boot a second copy of it.
     redirectUri: window.location.origin,
   },
   cache: {
@@ -41,6 +45,6 @@ export const msalConfig: Configuration = {
   },
 }
 
-export const loginRequest: PopupRequest = {
+export const loginRequest: RedirectRequest = {
   scopes: [bffScope],
 }

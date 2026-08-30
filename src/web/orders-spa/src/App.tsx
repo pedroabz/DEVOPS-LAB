@@ -33,7 +33,7 @@ function SignInBar() {
   const { instance, accounts, inProgress } = useMsal()
 
   // MsalProvider initialises the instance asynchronously and reports Startup while it does.
-  // loginPopup on an instance that has not finished initialising throws
+  // loginRedirect on an instance that has not finished initialising throws
   // BrowserAuthError: uninitialized_public_client_application, so the button waits it out.
   const busy = inProgress !== InteractionStatus.None
 
@@ -43,12 +43,12 @@ function SignInBar() {
         {/* `name` is the profile's display name and is absent for accounts that never got one,
             so the UPN in `username` is the fallback that is always there. */}
         Signed in as <strong>{accounts[0]?.name ?? accounts[0]?.username}</strong>{' '}
-        <button disabled={busy} onClick={() => void instance.logoutPopup()}>
+        <button disabled={busy} onClick={() => void instance.logoutRedirect()}>
           Sign out
         </button>
       </AuthenticatedTemplate>
       <UnauthenticatedTemplate>
-        <button disabled={busy} onClick={() => void instance.loginPopup(loginRequest)}>
+        <button disabled={busy} onClick={() => void instance.loginRedirect(loginRequest)}>
           Sign in
         </button>
       </UnauthenticatedTemplate>
